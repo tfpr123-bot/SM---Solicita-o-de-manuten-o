@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+itsdangerous
+sqlalchemy
+psycopg[binary]
+passlib[bcrypt]
