@@ -87,6 +87,18 @@ textarea {
     font-family: inherit;
 }
 
+/* foco visível para navegação por teclado */
+
+a:focus-visible,
+button:focus-visible,
+.nav-item:focus-visible,
+.button:focus-visible {
+
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
 
 /* =========================================================
    APP
@@ -1439,6 +1451,20 @@ button:hover,
     transform: translateY(-1px);
 }
 
+.button-outline {
+
+    background: white;
+
+    color: var(--primary);
+
+    border: 1px solid #cddbf3;
+}
+
+.button-outline:hover {
+
+    background: #eef4ff;
+}
+
 
 /* =========================================================
    CARDS GERAIS
@@ -1659,6 +1685,230 @@ hr {
 
 
 /* =========================================================
+   TELA "MINHAS SOLICITAÇÕES" (LÍDER)
+   Reaproveita o design system do dashboard.
+   ========================================================= */
+
+.my-requests-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fill, minmax(300px, 1fr));
+
+    gap: 16px;
+}
+
+.my-request-card {
+
+    display: block;
+
+    padding: 20px;
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 14px;
+
+    box-shadow: var(--shadow);
+
+    transition:
+        transform 0.18s,
+        box-shadow 0.18s;
+}
+
+.my-request-card:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow: var(--shadow-hover);
+}
+
+.my-request-top {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 12px;
+}
+
+.my-request-card h3 {
+
+    margin: 10px 0 2px;
+
+    font-size: 15px;
+
+    letter-spacing: -0.2px;
+}
+
+.my-request-sector {
+
+    display: block;
+
+    color: var(--primary);
+
+    font-size: 11px;
+
+    font-weight: 700;
+}
+
+.my-request-card p {
+
+    margin: 10px 0;
+
+    color: var(--text-secondary);
+
+    font-size: 12px;
+
+    line-height: 1.55;
+
+    display: -webkit-box;
+
+    -webkit-line-clamp: 2;
+
+    -webkit-box-orient: vertical;
+
+    overflow: hidden;
+}
+
+.my-request-bottom {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding-top: 12px;
+
+    border-top: 1px solid #edf0f4;
+
+    color: var(--text-light);
+
+    font-size: 10px;
+}
+
+.my-request-bottom strong {
+
+    color: var(--text-secondary);
+}
+
+
+/* =========================================================
+   RELATÓRIOS
+   ========================================================= */
+
+.reports-grid {
+
+    display: grid;
+
+    grid-template-columns: 1.3fr 1fr;
+
+    gap: 16px;
+
+    margin-bottom: 25px;
+}
+
+.chart-card {
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 14px;
+
+    padding: 20px 22px;
+
+    box-shadow: var(--shadow);
+}
+
+.chart-card h2 {
+
+    margin: 0 0 2px;
+
+    font-size: 15px;
+}
+
+.chart-card p {
+
+    margin: 0 0 16px;
+
+    color: var(--text-secondary);
+
+    font-size: 11px;
+}
+
+.chart-card canvas {
+
+    max-height: 260px;
+}
+
+.chart-empty {
+
+    padding: 40px 10px;
+
+    text-align: center;
+
+    color: var(--text-light);
+
+    font-size: 12px;
+}
+
+.employee-table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    margin-top: 6px;
+}
+
+.employee-table th {
+
+    text-align: left;
+
+    padding: 8px 10px;
+
+    color: #7b8697;
+
+    font-size: 9px;
+
+    font-weight: 800;
+
+    letter-spacing: 0.5px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.employee-table td {
+
+    padding: 10px 10px;
+
+    border-bottom: 1px solid #edf0f4;
+
+    font-size: 12px;
+}
+
+.employee-table tr:last-child td {
+
+    border-bottom: 0;
+}
+
+.employee-name-cell {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+}
+
+
+/* =========================================================
    RESPONSIVO — 1100
    ========================================================= */
 
@@ -1680,6 +1930,10 @@ hr {
 
     .equipment-cell {
         min-width: 140px;
+    }
+
+    .reports-grid {
+        grid-template-columns: 1fr;
     }
 
 }
@@ -1975,6 +2229,10 @@ hr {
         color: var(--text-secondary);
 
         font-weight: 700;
+    }
+
+    .my-requests-grid {
+        grid-template-columns: 1fr;
     }
 
 }
