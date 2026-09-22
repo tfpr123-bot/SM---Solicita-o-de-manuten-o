@@ -18,6 +18,8 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
+    inspect,
+    text,
 )
 from sqlalchemy.orm import (
     declarative_base,
@@ -36,12 +38,10 @@ BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "sqlite:///./manutencao.db",
 )
-
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace(
@@ -50,7 +50,6 @@ if DATABASE_URL.startswith("postgres://"):
         1,
     )
 
-
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace(
         "postgresql://",
@@ -58,28 +57,23 @@ if DATABASE_URL.startswith("postgresql://"):
         1,
     )
 
-
 connect_args = {}
-
 
 if DATABASE_URL.startswith("sqlite"):
     connect_args = {
         "check_same_thread": False,
     }
 
-
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
 )
-
 
 SessionLocal = sessionmaker(
     bind=engine,
     autoflush=False,
     autocommit=False,
 )
-
 
 Base = declarative_base()
 
@@ -101,7 +95,6 @@ pwd_context = CryptContext(
 app = FastAPI(
     title="Sistema de Manutenção",
 )
-
 
 app.add_middleware(
     SessionMiddleware,
@@ -129,7 +122,6 @@ app.mount(
     name="static",
 )
 
-
 app.mount(
     "/uploads",
     StaticFiles(
@@ -138,10 +130,23 @@ app.mount(
     name="uploads",
 )
 
-
 templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
+
+
+# =========================================================
+# FUNCIONÁRIOS DA MANUTENÇÃO
+# =========================================================
+
+MAINTENANCE_EMPLOYEES = [
+    "João Maria",
+    "João Antunes",
+    "Valdemir",
+    "Alexandro",
+    "Diego",
+    "Claudinei",
+]
 
 
 # =========================================================
@@ -231,6 +236,7 @@ class MaintenanceRequest(Base):
         nullable=False,
     )
 
+    # Usuário que assumiu/agendou a solicitação
     assigned_to_id = Column(
         Integer,
         ForeignKey("users.id"),
@@ -242,6 +248,10 @@ class MaintenanceRequest(Base):
         default=datetime.now,
     )
 
+    # =====================================================
+    # EXECUÇÃO REAL
+    # =====================================================
+
     started_at = Column(
         DateTime,
         nullable=True,
@@ -251,6 +261,35 @@ class MaintenanceRequest(Base):
         DateTime,
         nullable=True,
     )
+
+    # =====================================================
+    # AGENDAMENTO
+    # =====================================================
+
+    planned_at = Column(
+        DateTime,
+        nullable=True,
+    )
+
+    scheduled_employee = Column(
+        String(120),
+        nullable=True,
+    )
+
+    scheduling_note = Column(
+        Text,
+        nullable=True,
+    )
+
+    # Quem realmente executou o serviço
+    executor_name = Column(
+        String(120),
+        nullable=True,
+    )
+
+    # =====================================================
+    # RELATÓRIO
+    # =====================================================
 
     diagnosis = Column(
         Text,
@@ -372,12 +411,56 @@ class History(Base):
 
 
 # =========================================================
-# CRIAÇÃO DAS TABELAS
+# CRIAÇÃO / ATUALIZAÇÃO DAS TABELAS
 # =========================================================
 
 Base.metadata.create_all(
     bind=engine,
 )
+
+
+def migrate_database():
+    """
+    Adiciona as novas colunas em bancos existentes
+    sem apagar os dados atuais.
+    """
+
+    inspector = inspect(engine)
+
+    tables = inspector.get_table_names()
+
+    if "maintenance_requests" not in tables:
+        return
+
+    existing_columns = {
+        column["name"]
+        for column in inspector.get_columns(
+            "maintenance_requests"
+        )
+    }
+
+    new_columns = {
+        "planned_at": "DATETIME",
+        "scheduled_employee": "VARCHAR(120)",
+        "scheduling_note": "TEXT",
+        "executor_name": "VARCHAR(120)",
+    }
+
+    with engine.begin() as connection:
+
+        for column_name, column_type in new_columns.items():
+
+            if column_name not in existing_columns:
+
+                connection.execute(
+                    text(
+                        f"ALTER TABLE maintenance_requests "
+                        f"ADD COLUMN {column_name} {column_type}"
+                    )
+                )
+
+
+migrate_database()
 
 
 # =========================================================
@@ -459,6 +542,18 @@ def add_history(
     db.commit()
 
 
+def parse_datetime(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.fromisoformat(
+            value
+        )
+    except ValueError:
+        return None
+
+
 # =========================================================
 # USUÁRIOS INICIAIS
 # =========================================================
@@ -467,7 +562,9 @@ def seed_admin():
     db = SessionLocal()
 
     try:
+
         if not db.query(User).first():
+
             db.add_all(
                 [
                     User(
@@ -479,7 +576,7 @@ def seed_admin():
                         role="adm",
                     ),
                     User(
-                        name="Manutenção",
+                        name="Líder de Manutenção",
                         username="manutencao",
                         password_hash=pwd_context.hash(
                             "manutencao123"
@@ -702,6 +799,7 @@ async def create_request(
     }
 
     for upload in files:
+
         if not upload.filename:
             continue
 
@@ -855,6 +953,14 @@ def dashboard(
             )
             .count()
         ),
+        "agendada": (
+            db.query(MaintenanceRequest)
+            .filter(
+                MaintenanceRequest.status
+                == "AGENDADA"
+            )
+            .count()
+        ),
         "atendimento": (
             db.query(MaintenanceRequest)
             .filter(
@@ -936,12 +1042,97 @@ def request_detail(
         context={
             "user": user,
             "item": req,
+            "maintenance_employees": MAINTENANCE_EMPLOYEES,
+            "now_datetime": datetime.now().strftime(
+                "%Y-%m-%dT%H:%M"
+            ),
         },
     )
 
 
 # =========================================================
-# ASSUMIR SOLICITAÇÃO
+# AGENDAR ATENDIMENTO
+# =========================================================
+
+@app.post(
+    "/solicitacao/{request_id}/agendar"
+)
+def schedule_request(
+    request: Request,
+    request_id: int,
+    scheduled_employee: str = Form(...),
+    planned_at: str = Form(...),
+    scheduling_note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    user, redirect = require_login(
+        request,
+        db,
+    )
+
+    if redirect:
+        return redirect
+
+    require_role(
+        user,
+        ["manutencao", "adm"],
+    )
+
+    req = db.get(
+        MaintenanceRequest,
+        request_id,
+    )
+
+    if not req:
+        raise HTTPException(
+            status_code=404,
+            detail="Solicitação não encontrada",
+        )
+
+    if scheduled_employee not in MAINTENANCE_EMPLOYEES:
+        raise HTTPException(
+            status_code=400,
+            detail="Funcionário inválido",
+        )
+
+    planned_datetime = parse_datetime(
+        planned_at
+    )
+
+    if not planned_datetime:
+        raise HTTPException(
+            status_code=400,
+            detail="Data e horário do agendamento inválidos",
+        )
+
+    req.scheduled_employee = scheduled_employee
+    req.planned_at = planned_datetime
+    req.scheduling_note = scheduling_note.strip()
+    req.assigned_to_id = user.id
+    req.status = "AGENDADA"
+
+    db.commit()
+
+    add_history(
+        db,
+        req,
+        user,
+        (
+            f"Atendimento agendado para "
+            f"{scheduled_employee} em "
+            f"{planned_datetime.strftime('%d/%m/%Y %H:%M')}"
+        ),
+    )
+
+    return RedirectResponse(
+        f"/solicitacao/{request_id}",
+        status_code=303,
+    )
+
+
+# =========================================================
+# LEGADO - ASSUMIR SOLICITAÇÃO
+# Mantido para não quebrar registros antigos.
 # =========================================================
 
 @app.post(
@@ -1007,6 +1198,9 @@ def take_request(
 def finish_request(
     request: Request,
     request_id: int,
+    executor_name: str = Form(...),
+    started_at: str = Form(...),
+    finished_at: str = Form(...),
     diagnosis: str = Form(""),
     cause: str = Form(""),
     service_done: str = Form(""),
@@ -1038,8 +1232,38 @@ def finish_request(
             detail="Solicitação não encontrada",
         )
 
+    if executor_name not in MAINTENANCE_EMPLOYEES:
+        raise HTTPException(
+            status_code=400,
+            detail="Funcionário executor inválido",
+        )
+
+    real_start = parse_datetime(
+        started_at
+    )
+
+    real_finish = parse_datetime(
+        finished_at
+    )
+
+    if not real_start or not real_finish:
+        raise HTTPException(
+            status_code=400,
+            detail="Data ou horário da execução inválidos",
+        )
+
+    if real_finish < real_start:
+        raise HTTPException(
+            status_code=400,
+            detail="O término não pode ser anterior ao início",
+        )
+
     req.status = "CONCLUÍDA"
-    req.finished_at = datetime.now()
+
+    req.started_at = real_start
+    req.finished_at = real_finish
+
+    req.executor_name = executor_name
 
     req.diagnosis = diagnosis.strip()
     req.cause = cause.strip()
@@ -1056,7 +1280,10 @@ def finish_request(
         db,
         req,
         user,
-        "Solicitação concluída",
+        (
+            f"Solicitação concluída. "
+            f"Execução realizada por {executor_name}"
+        ),
     )
 
     return RedirectResponse(
