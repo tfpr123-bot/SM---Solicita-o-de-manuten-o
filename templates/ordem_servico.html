@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Ordem de Serviço #{{ item.id }}</title>
+
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body class="os-page">
+
+<div class="os-toolbar">
+
+    <a href="/solicitacao/{{ item.id }}"
+       class="btn btn-secondary">
+        ← Voltar
+    </a>
+
+    <button onclick="window.print()"
+            class="btn btn-dark">
+        🖨 Imprimir
+    </button>
+
+</div>
+
+
+<main class="os-document">
+
+    <!-- CABEÇALHO -->
+    <header class="os-header">
+
+        <div class="os-company">
+
+            <div class="os-logo">
+                🔧
+            </div>
+
+            <div>
+                <strong>MANUTENÇÃO</strong>
+                <span>Gestão de Serviços</span>
+            </div>
+
+        </div>
+
+        <div class="os-title">
+
+            <span>ORDEM DE SERVIÇO</span>
+
+            <strong>
+                Nº {{ "%06d"|format(item.id) }}
+            </strong>
+
+        </div>
+
+    </header>
+
+
+    <!-- IDENTIFICAÇÃO -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            IDENTIFICAÇÃO
+        </div>
+
+        <div class="os-grid">
+
+            <div>
+                <label>Solicitante</label>
+                <strong>{{ item.requester.name }}</strong>
+            </div>
+
+            <div>
+                <label>Setor</label>
+                <strong>{{ item.sector }}</strong>
+            </div>
+
+            <div>
+                <label>Equipamento / Local</label>
+                <strong>{{ item.equipment }}</strong>
+            </div>
+
+            <div>
+                <label>Data de abertura</label>
+
+                {% if item.created_at %}
+                    <strong>
+                        {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </strong>
+                {% else %}
+                    <strong>—</strong>
+                {% endif %}
+
+            </div>
+
+            <div>
+                <label>Status</label>
+                <strong>{{ item.status }}</strong>
+            </div>
+
+            <div>
+                <label>Prioridade</label>
+                <strong>{{ item.priority }}</strong>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- PROBLEMA -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            PROBLEMA INFORMADO
+        </div>
+
+        <div class="os-text">
+            {{ item.description }}
+        </div>
+
+    </section>
+
+
+    <!-- AGENDAMENTO -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            PROGRAMAÇÃO DO SERVIÇO
+        </div>
+
+        <div class="os-grid">
+
+            <div>
+                <label>Responsável programado</label>
+
+                <strong>
+                    {{ item.scheduled_employee or "Não informado" }}
+                </strong>
+            </div>
+
+            <div>
+                <label>Data prevista</label>
+
+                {% if item.planned_at %}
+                    <strong>
+                        {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
+                    </strong>
+                {% else %}
+                    <strong>Não informado</strong>
+                {% endif %}
+
+            </div>
+
+            <div class="os-grid-full">
+
+                <label>Observação do agendamento</label>
+
+                <strong>
+                    {{ item.scheduling_note or "—" }}
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- EXECUÇÃO -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            EXECUÇÃO DA MANUTENÇÃO
+        </div>
+
+        <div class="os-grid">
+
+            <div>
+                <label>Executor</label>
+
+                <strong>
+                    {{ item.executor_name or "________________________________" }}
+                </strong>
+            </div>
+
+            <div>
+                <label>Início</label>
+
+                <strong>
+                    {% if item.started_at %}
+                        {{ item.started_at.strftime('%d/%m/%Y %H:%M') }}
+                    {% else %}
+                        ____/____/________ ____:____
+                    {% endif %}
+                </strong>
+
+            </div>
+
+            <div>
+                <label>Término</label>
+
+                <strong>
+                    {% if item.finished_at %}
+                        {{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}
+                    {% else %}
+                        ____/____/________ ____:____
+                    {% endif %}
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- DIAGNÓSTICO -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            DIAGNÓSTICO
+        </div>
+
+        <div class="os-text os-large">
+            {{ item.diagnosis or "" }}
+        </div>
+
+    </section>
+
+
+    <!-- CAUSA -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            CAUSA IDENTIFICADA
+        </div>
+
+        <div class="os-text os-large">
+            {{ item.cause or "" }}
+        </div>
+
+    </section>
+
+
+    <!-- SERVIÇO -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            SERVIÇO REALIZADO
+        </div>
+
+        <div class="os-text os-service">
+            {{ item.service_done or "" }}
+        </div>
+
+    </section>
+
+
+    <!-- MATERIAIS -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            PEÇAS / MATERIAIS UTILIZADOS
+        </div>
+
+        <div class="os-text">
+            {{ item.parts_used or "" }}
+        </div>
+
+    </section>
+
+
+    <!-- OBSERVAÇÕES -->
+    <section class="os-section">
+
+        <div class="os-section-title">
+            OBSERVAÇÕES
+        </div>
+
+        <div class="os-text">
+            {{ item.observations or "" }}
+        </div>
+
+    </section>
+
+
+    <!-- ASSINATURAS -->
+    <section class="os-signatures">
+
+        <div class="signature">
+            <div class="signature-line"></div>
+            <span>Responsável pela execução</span>
+        </div>
+
+        <div class="signature">
+            <div class="signature-line"></div>
+            <span>Responsável pela solicitação</span>
+        </div>
+
+    </section>
+
+
+    <footer class="os-footer">
+
+        Ordem de Serviço Nº {{ "%06d"|format(item.id) }}
+
+        <span>
+            Documento gerado pelo Sistema de Manutenção
+        </span>
+
+    </footer>
+
+</main>
+
+</body>
+</html>
