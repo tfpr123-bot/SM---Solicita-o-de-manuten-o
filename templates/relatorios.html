@@ -1,0 +1,21 @@
+🔧
+MANUTENÇÃO Gestão de Serviços
+MENU
+▦ Dashboard {% if counts.pendente > 0 %} {{ counts.pendente }} {% endif %} 📊 Relatórios
+{{ user.name[0]|upper }}
+{{ user.name }} {% if user.role == "adm" %} Administrador {% else %} Manutenção {% endif %}
+↪ Sair do sistema
+Sistema / Relatórios
+Relatórios
+Desempenho da equipe com base em {{ total_concluded }} solicitaç{% if total_concluded == 1 %}ão concluída{% else %}ões concluídas{% endif %}.
+
+{{ user.name[0]|upper }}
+{{ user.name }} Online
+{% if total_concluded == 0 %}
+📊
+Ainda não há dados suficientes
+Os relatórios aparecem aqui assim que solicitações forem concluídas.
+
+{% else %}
+Atendimentos por funcionário
+Quantidade de ordens de serviço concluídas por cada técnico.
