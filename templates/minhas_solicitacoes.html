@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minhas Solicitações</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="topbar">
+        <div>
+            <h1>Minhas Solicitações</h1>
+            <p>Olá, {{ user.name }}</p>
+        </div>
+        <a href="/logout">Sair</a>
+    </div>
+
+    <div class="actions">
+        <a class="button" href="/nova-solicitacao">+ Nova Solicitação</a>
+    </div>
+
+    {% if rows %}
+        <div class="requests">
+            {% for item in rows %}
+                <a class="request-card" href="/solicitacao/{{ item.id }}">
+
+                    <div class="request-header">
+                        <strong>Solicitação #{{ item.id }}</strong>
+
+                        <span class="status {{ item.status|lower|replace(' ', '-') }}">
+                            {{ item.status }}
+                        </span>
+                    </div>
+
+                    <p><strong>Setor:</strong> {{ item.sector }}</p>
+                    <p><strong>Equipamento / Local:</strong> {{ item.equipment }}</p>
+
+                    <p class="description">
+                        {{ item.description }}
+                    </p>
+
+                    <div class="request-footer">
+                        <span>Prioridade: <strong>{{ item.priority }}</strong></span>
+                        <span>
+                            {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </span>
+                    </div>
+
+                </a>
+            {% endfor %}
+        </div>
+
+    {% else %}
+
+        <div class="card empty">
+            <h2>Nenhuma solicitação encontrada</h2>
+            <p>Você ainda não abriu nenhuma solicitação de manutenção.</p>
+            <a class="button" href="/nova-solicitacao">
+                Abrir primeira solicitação
+            </a>
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
