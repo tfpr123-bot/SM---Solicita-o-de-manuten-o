@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitação #{{ item.id }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="topbar">
+        <div>
+            <h1>Solicitação #{{ item.id }}</h1>
+            <p>{{ item.sector }} — {{ item.equipment }}</p>
+        </div>
+
+        {% if user.role == "lider" %}
+            <a href="/minhas-solicitacoes">Voltar</a>
+        {% else %}
+            <a href="/painel">Voltar</a>
+        {% endif %}
+    </div>
+
+
+    <div class="card">
+
+        <div class="request-header">
+
+            <div>
+                <strong>Status</strong>
+
+                <span class="status {{ item.status|lower|replace(' ', '-') }}">
+                    {{ item.status }}
+                </span>
+            </div>
+
+            <div>
+                <strong>Prioridade:</strong>
+                {{ item.priority }}
+            </div>
+
+        </div>
+
+        <hr>
+
+        <p>
+            <strong>Solicitante:</strong>
+            {{ item.requester.name }}
+        </p>
+
+        <p>
+            <strong>Setor:</strong>
+            {{ item.sector }}
+        </p>
+
+        <p>
+            <strong>Equipamento / Local:</strong>
+            {{ item.equipment }}
+        </p>
+
+        <p>
+            <strong>Problema informado:</strong>
+        </p>
+
+        <div class="description-box">
+            {{ item.description }}
+        </div>
+
+        {% if item.created_at %}
+            <p>
+                <strong>Aberta em:</strong>
+                {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
+            </p>
+        {% endif %}
+
+    </div>
+
+
+    {% if item.attachments %}
+
+        <div class="card">
+
+            <h2>Fotos / Vídeos</h2>
+
+            <div class="attachments">
+
+                {% for file in item.attachments %}
+
+                    {% set ext = file.filename.lower().split('.')[-1] %}
+
+                    {% if ext in ['jpg', 'jpeg', 'png', 'webp'] %}
+
+                        <div class="attachment">
+                            <img src="/uploads/{{ file.filename }}"
+                                 alt="{{ file.original_name }}">
+                            <p>{{ file.original_name }}</p>
+                        </div>
+
+                    {% elif ext in ['mp4', 'mov', 'webm'] %}
+
+                        <div class="attachment">
+                            <video controls>
+                                <source src="/uploads/{{ file.filename }}">
+                            </video>
+
+                            <p>{{ file.original_name }}</p>
+                        </div>
+
+                    {% endif %}
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+
+    {% if user.role in ["manutencao", "adm"] %}
+
+        {% if item.status == "PENDENTE" %}
+
+            <div class="card">
+
+                <h2>Atendimento</h2>
+
+                <p>
+                    Essa solicitação ainda não foi assumida pela manutenção.
+                </p>
+
+                <form method="post"
+                      action="/solicitacao/{{ item.id }}/assumir">
+
+                    <button type="submit">
+                        🔧 Assumir Solicitação
+                    </button>
+
+                </form>
+
+            </div>
+
+        {% endif %}
+
+
+        <div class="card">
+
+            <h2>Prioridade</h2>
+
+            <form method="post"
+                  action="/solicitacao/{{ item.id }}/prioridade">
+
+                <select name="priority">
+
+                    <option value="Baixa"
+                        {% if item.priority == "Baixa" %}selected{% endif %}>
+                        Baixa
+                    </option>
+
+                    <option value="Média"
+                        {% if item.priority == "Média" %}selected{% endif %}>
+                        Média
+                    </option>
+
+                    <option value="Alta"
+                        {% if item.priority == "Alta" %}selected{% endif %}>
+                        Alta
+                    </option>
+
+                    <option value="Crítica"
+                        {% if item.priority == "Crítica" %}selected{% endif %}>
+                        Crítica
+                    </option>
+
+                </select>
+
+                <button type="submit">
+                    Alterar Prioridade
+                </button>
+
+            </form>
+
+        </div>
+
+
+        {% if item.status == "EM ATENDIMENTO" %}
+
+            <div class="card">
+
+                <h2>Registro da Manutenção</h2>
+
+                <form method="post"
+                      action="/solicitacao/{{ item.id }}/concluir">
+
+                    <label>Diagnóstico</label>
+
+                    <textarea name="diagnosis"
+                              rows="4"
+                              placeholder="O que foi identificado?">{{ item.diagnosis or "" }}</textarea>
+
+
+                    <label>Causa</label>
+
+                    <textarea name="cause"
+                              rows="4"
+                              placeholder="Qual foi a causa do problema?">{{ item.cause or "" }}</textarea>
+
+
+                    <label>Serviço realizado</label>
+
+                    <textarea name="service_done"
+                              rows="5"
+                              placeholder="O que foi feito para solucionar?">{{ item.service_done or "" }}</textarea>
+
+
+                    <label>Peças / Materiais utilizados</label>
+
+                    <textarea name="parts_used"
+                              rows="4"
+                              placeholder="Informe peças ou materiais utilizados.">{{ item.parts_used or "" }}</textarea>
+
+
+                    <label>Observações</label>
+
+                    <textarea name="observations"
+                              rows="4"
+                              placeholder="Outras informações importantes.">{{ item.observations or "" }}</textarea>
+
+
+                    <button type="submit">
+                        ✅ Concluir Solicitação
+                    </button>
+
+                </form>
+
+            </div>
+
+        {% endif %}
+
+
+        {% if item.status == "CONCLUÍDA" %}
+
+            <div class="card">
+
+                <h2>Manutenção realizada</h2>
+
+                {% if item.diagnosis %}
+                    <p>
+                        <strong>Diagnóstico:</strong><br>
+                        {{ item.diagnosis }}
+                    </p>
+                {% endif %}
+
+                {% if item.cause %}
+                    <p>
+                        <strong>Causa:</strong><br>
+                        {{ item.cause }}
+                    </p>
+                {% endif %}
+
+                {% if item.service_done %}
+                    <p>
+                        <strong>Serviço realizado:</strong><br>
+                        {{ item.service_done }}
+                    </p>
+                {% endif %}
+
+                {% if item.parts_used %}
+                    <p>
+                        <strong>Peças / Materiais:</strong><br>
+                        {{ item.parts_used }}
+                    </p>
+                {% endif %}
+
+                {% if item.observations %}
+                    <p>
+                        <strong>Observações:</strong><br>
+                        {{ item.observations }}
+                    </p>
+                {% endif %}
+
+                {% if item.finished_at %}
+                    <p>
+                        <strong>Concluída em:</strong>
+                        {{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+    {% endif %}
+
+
+    {% if item.history %}
+
+        <div class="card">
+
+            <h2>Histórico</h2>
+
+            <div class="history">
+
+                {% for event in item.history|sort(attribute='created_at', reverse=true) %}
+
+                    <div class="history-item">
+
+                        <strong>{{ event.action }}</strong>
+
+                        <span>
+                            {{ event.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </span>
+
+                        <small>
+                            {{ event.user.name }}
+                        </small>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
