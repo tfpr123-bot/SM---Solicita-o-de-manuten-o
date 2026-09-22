@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Manutenção</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <div class="topbar">
+        <div>
+            <h1>Painel de Manutenção</h1>
+            <p>Olá, {{ user.name }}</p>
+        </div>
+        <a href="/logout">Sair</a>
+    </div>
+
+    <div class="dashboard-cards">
+
+        <div class="dashboard-card">
+            <span>Pendentes</span>
+            <strong>{{ counts.pendente }}</strong>
+        </div>
+
+        <div class="dashboard-card">
+            <span>Em atendimento</span>
+            <strong>{{ counts.atendimento }}</strong>
+        </div>
+
+        <div class="dashboard-card">
+            <span>Concluídas</span>
+            <strong>{{ counts.concluida }}</strong>
+        </div>
+
+    </div>
+
+    <div class="filters card">
+
+        <form method="get" action="/painel">
+
+            <div>
+                <label>Status</label>
+
+                <select name="status">
+                    <option value="">Todos</option>
+                    <option value="PENDENTE"
+                        {% if status == "PENDENTE" %}selected{% endif %}>
+                        Pendente
+                    </option>
+
+                    <option value="EM ATENDIMENTO"
+                        {% if status == "EM ATENDIMENTO" %}selected{% endif %}>
+                        Em atendimento
+                    </option>
+
+                    <option value="CONCLUÍDA"
+                        {% if status == "CONCLUÍDA" %}selected{% endif %}>
+                        Concluída
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <label>Prioridade</label>
+
+                <select name="priority">
+                    <option value="">Todas</option>
+
+                    <option value="Baixa"
+                        {% if priority == "Baixa" %}selected{% endif %}>
+                        Baixa
+                    </option>
+
+                    <option value="Média"
+                        {% if priority == "Média" %}selected{% endif %}>
+                        Média
+                    </option>
+
+                    <option value="Alta"
+                        {% if priority == "Alta" %}selected{% endif %}>
+                        Alta
+                    </option>
+
+                    <option value="Crítica"
+                        {% if priority == "Crítica" %}selected{% endif %}>
+                        Crítica
+                    </option>
+                </select>
+            </div>
+
+            <button type="submit">Filtrar</button>
+
+        </form>
+
+    </div>
+
+    {% if rows %}
+
+        <div class="requests">
+
+            {% for item in rows %}
+
+                <a class="request-card" href="/solicitacao/{{ item.id }}">
+
+                    <div class="request-header">
+
+                        <strong>
+                            #{{ item.id }} — {{ item.sector }}
+                        </strong>
+
+                        <span class="status {{ item.status|lower|replace(' ', '-') }}">
+                            {{ item.status }}
+                        </span>
+
+                    </div>
+
+                    <p>
+                        <strong>Equipamento / Local:</strong>
+                        {{ item.equipment }}
+                    </p>
+
+                    <p class="description">
+                        {{ item.description }}
+                    </p>
+
+                    <div class="request-footer">
+
+                        <span>
+                            Prioridade:
+                            <strong>{{ item.priority }}</strong>
+                        </span>
+
+                        <span>
+                            Solicitante:
+                            {{ item.requester.name }}
+                        </span>
+
+                        <span>
+                            {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </span>
+
+                    </div>
+
+                </a>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="card empty">
+
+            <h2>Nenhuma solicitação encontrada</h2>
+
+            <p>
+                Não existem solicitações para os filtros selecionados.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
