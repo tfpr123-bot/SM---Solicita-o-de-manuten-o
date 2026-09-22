@@ -12,7 +12,7 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 
-BASE_DIR = Path(_file_).resolve().parent
+BASE_DIR = Path(**file**).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -22,12 +22,28 @@ if DATABASE_URL.startswith("postgres://"):
 DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 if DATABASE_URL.startswith("postgresql://"):
-DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+DATABASE_URL = DATABASE_URL.replace(
+"postgresql://",
+"postgresql+psycopg://",
+1,
+)
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+connect_args = {}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+if DATABASE_URL.startswith("sqlite"):
+connect_args = {"check_same_thread": False}
+
+engine = create_engine(
+DATABASE_URL,
+connect_args=connect_args,
+)
+
+SessionLocal = sessionmaker(
+bind=engine,
+autoflush=False,
+autocommit=False,
+)
+
 Base = declarative_base()
 
 pwd_context = CryptContext(
@@ -35,13 +51,21 @@ schemes=["pbkdf2_sha256"],
 deprecated="auto",
 )
 
-app = FastAPI(title="Sistema de Manutenção")
+app = FastAPI(
+title="Sistema de Manutenção",
+)
 
 app.add_middleware(
 SessionMiddleware,
-secret_key=os.getenv("SECRET_KEY", secrets.token_hex(32)),
+secret_key=os.getenv(
+"SECRET_KEY",
+secrets.token_hex(32),
+),
 same_site="lax",
-https_only=os.getenv("COOKIE_SECURE", "false").lower() == "true",
+https_only=os.getenv(
+"COOKIE_SECURE",
+"false",
+).lower() == "true",
 )
 
 app.mount(
@@ -56,18 +80,45 @@ StaticFiles(directory=UPLOAD_DIR),
 name="uploads",
 )
 
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+templates = Jinja2Templates(
+directory=BASE_DIR / "templates"
+)
 
 class User(Base):
 **tablename** = "users"
 
 ```
-id = Column(Integer, primary_key=True)
-name = Column(String(120), nullable=False)
-username = Column(String(80), unique=True, nullable=False, index=True)
-password_hash = Column(String(255), nullable=False)
-role = Column(String(30), nullable=False)
-active = Column(Integer, default=1)
+id = Column(
+    Integer,
+    primary_key=True,
+)
+
+name = Column(
+    String(120),
+    nullable=False,
+)
+
+username = Column(
+    String(80),
+    unique=True,
+    nullable=False,
+    index=True,
+)
+
+password_hash = Column(
+    String(255),
+    nullable=False,
+)
+
+role = Column(
+    String(30),
+    nullable=False,
+)
+
+active = Column(
+    Integer,
+    default=1,
+)
 
 requests = relationship(
     "MaintenanceRequest",
@@ -80,10 +131,25 @@ class MaintenanceRequest(Base):
 **tablename** = "maintenance_requests"
 
 ```
-id = Column(Integer, primary_key=True)
-sector = Column(String(150), nullable=False)
-equipment = Column(String(150), nullable=False)
-description = Column(Text, nullable=False)
+id = Column(
+    Integer,
+    primary_key=True,
+)
+
+sector = Column(
+    String(150),
+    nullable=False,
+)
+
+equipment = Column(
+    String(150),
+    nullable=False,
+)
+
+description = Column(
+    Text,
+    nullable=False,
+)
 
 priority = Column(
     String(20),
@@ -124,11 +190,30 @@ finished_at = Column(
     nullable=True,
 )
 
-diagnosis = Column(Text, nullable=True)
-cause = Column(Text, nullable=True)
-service_done = Column(Text, nullable=True)
-parts_used = Column(Text, nullable=True)
-observations = Column(Text, nullable=True)
+diagnosis = Column(
+    Text,
+    nullable=True,
+)
+
+cause = Column(
+    Text,
+    nullable=True,
+)
+
+service_done = Column(
+    Text,
+    nullable=True,
+)
+
+parts_used = Column(
+    Text,
+    nullable=True,
+)
+
+observations = Column(
+    Text,
+    nullable=True,
+)
 
 requester = relationship(
     "User",
@@ -158,7 +243,10 @@ class Attachment(Base):
 **tablename** = "attachments"
 
 ```
-id = Column(Integer, primary_key=True)
+id = Column(
+    Integer,
+    primary_key=True,
+)
 
 request_id = Column(
     Integer,
@@ -186,7 +274,10 @@ class History(Base):
 **tablename** = "history"
 
 ```
-id = Column(Integer, primary_key=True)
+id = Column(
+    Integer,
+    primary_key=True,
+)
 
 request_id = Column(
     Integer,
@@ -215,10 +306,14 @@ request = relationship(
     back_populates="history",
 )
 
-user = relationship("User")
+user = relationship(
+    "User"
+)
 ```
 
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(
+bind=engine
+)
 
 def get_db():
 db = SessionLocal()
@@ -230,25 +325,40 @@ finally:
     db.close()
 ```
 
-def current_user(request: Request, db: Session):
+def current_user(
+request: Request,
+db: Session,
+):
 user_id = request.session.get("user_id")
 
 ```
 if not user_id:
     return None
 
-return db.get(User, user_id)
+return db.get(
+    User,
+    user_id,
+)
 ```
 
-def require_role(user, roles):
+def require_role(
+user,
+roles,
+):
 if not user or user.role not in roles:
 raise HTTPException(
 status_code=403,
 detail="Acesso não autorizado",
 )
 
-def require_login(request: Request, db: Session):
-user = current_user(request, db)
+def require_login(
+request: Request,
+db: Session,
+):
+user = current_user(
+request,
+db,
+)
 
 ```
 if not user:
@@ -260,7 +370,12 @@ if not user:
 return user, None
 ```
 
-def add_history(db, req, user, action):
+def add_history(
+db,
+req,
+user,
+action,
+):
 db.add(
 History(
 request_id=req.id,
@@ -310,12 +425,18 @@ finally:
 
 seed_admin()
 
-@app.get("/", response_class=HTMLResponse)
+@app.get(
+"/",
+response_class=HTMLResponse,
+)
 def index(
 request: Request,
 db: Session = Depends(get_db),
 ):
-user = current_user(request, db)
+user = current_user(
+request,
+db,
+)
 
 ```
 if not user:
@@ -336,8 +457,13 @@ return RedirectResponse(
 )
 ```
 
-@app.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+@app.get(
+"/login",
+response_class=HTMLResponse,
+)
+def login_page(
+request: Request,
+):
 return templates.TemplateResponse(
 request=request,
 name="login.html",
@@ -346,7 +472,10 @@ context={
 },
 )
 
-@app.post("/login", response_class=HTMLResponse)
+@app.post(
+"/login",
+response_class=HTMLResponse,
+)
 def login(
 request: Request,
 username: str = Form(...),
@@ -384,7 +513,9 @@ return RedirectResponse(
 ```
 
 @app.get("/logout")
-def logout(request: Request):
+def logout(
+request: Request,
+):
 request.session.clear()
 
 ```
@@ -449,16 +580,13 @@ require_role(
     ["lider", "adm"],
 )
 
-priority = (
-    priority
-    if priority in {
-        "Baixa",
-        "Média",
-        "Alta",
-        "Crítica",
-    }
-    else "Média"
-)
+if priority not in {
+    "Baixa",
+    "Média",
+    "Alta",
+    "Crítica",
+}:
+    priority = "Média"
 
 req = MaintenanceRequest(
     sector=sector.strip(),
@@ -486,7 +614,9 @@ for upload in files:
     if not upload.filename:
         continue
 
-    ext = Path(upload.filename).suffix.lower()
+    ext = Path(
+        upload.filename
+    ).suffix.lower()
 
     if ext not in allowed:
         continue
@@ -594,7 +724,9 @@ require_role(
     ["manutencao", "adm"],
 )
 
-query = db.query(MaintenanceRequest)
+query = db.query(
+    MaintenanceRequest
+)
 
 if status:
     query = query.filter(
@@ -625,16 +757,14 @@ counts = {
     "atendimento": (
         db.query(MaintenanceRequest)
         .filter(
-            MaintenanceRequest.status
-            == "EM ATENDIMENTO"
+            MaintenanceRequest.status == "EM ATENDIMENTO"
         )
         .count()
     ),
     "concluida": (
         db.query(MaintenanceRequest)
         .filter(
-            MaintenanceRequest.status
-            == "CONCLUÍDA"
+            MaintenanceRequest.status == "CONCLUÍDA"
         )
         .count()
     ),
