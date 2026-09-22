@@ -3,289 +3,418 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitação #{{ item.id }}</title>
+
+    <title>OS #{{ item.id }} | Manutenção</title>
+
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
-<body>
+<body class="detail-page">
 
-<div class="container">
+<div class="detail-container">
 
-    <div class="topbar">
+    <!-- CABEÇALHO -->
+    <header class="detail-header">
+
+        <div class="detail-title">
+
+            <div class="detail-kicker">
+                ORDEM DE SERVIÇO
+            </div>
+
+            <h1>Solicitação #{{ item.id }}</h1>
+
+            <p>
+                {{ item.sector }}
+                <span>•</span>
+                {{ item.equipment }}
+            </p>
+
+        </div>
+
+        <div class="detail-actions">
+
+            {% if user.role == "lider" %}
+
+                <a href="/minhas-solicitacoes"
+                   class="btn btn-secondary btn-back">
+                    ← Voltar
+                </a>
+
+            {% elif user.role == "adm" %}
+
+                <a href="/painel"
+                   class="btn btn-secondary btn-back">
+                    ← Dashboard
+                </a>
+
+                <a href="/solicitacao/{{ item.id }}/imprimir"
+                   target="_blank"
+                   class="btn btn-dark">
+                    🖨 Imprimir OS
+                </a>
+
+            {% else %}
+
+                <a href="/painel"
+                   class="btn btn-secondary btn-back">
+                    ← Voltar
+                </a>
+
+            {% endif %}
+
+        </div>
+
+    </header>
+
+
+    <!-- STATUS -->
+    <section class="detail-status-card">
 
         <div>
-            <h1>Solicitação #{{ item.id }}</h1>
-            <p>{{ item.sector }} — {{ item.equipment }}</p>
+
+            <span class="detail-label">
+                STATUS ATUAL
+            </span>
+
+            <span class="status status-large {{ item.status|lower|replace(' ', '-') }}">
+                {{ item.status }}
+            </span>
+
         </div>
 
-        {% if user.role == "lider" %}
-            <a href="/minhas-solicitacoes">Voltar</a>
-        {% else %}
-            <a href="/painel">Voltar</a>
-        {% endif %}
+        <div>
 
-    </div>
+            <span class="detail-label">
+                PRIORIDADE
+            </span>
 
-
-    <!-- =================================================
-         DADOS DA SOLICITAÇÃO
-    ================================================== -->
-
-    <div class="card">
-
-        <div class="request-header">
-
-            <div>
-                <strong>Status</strong>
-
-                <span class="status {{ item.status|lower|replace(' ', '-') }}">
-                    {{ item.status }}
-                </span>
-            </div>
-
-            <div>
-                <strong>Prioridade:</strong>
+            <strong class="priority-value priority-{{ item.priority|lower|replace('í','i') }}">
                 {{ item.priority }}
-            </div>
+            </strong>
 
         </div>
-
-
-        <hr>
-
-
-        <p>
-            <strong>Solicitante:</strong>
-            {{ item.requester.name }}
-        </p>
-
-        <p>
-            <strong>Setor:</strong>
-            {{ item.sector }}
-        </p>
-
-        <p>
-            <strong>Equipamento / Local:</strong>
-            {{ item.equipment }}
-        </p>
-
-        <p>
-            <strong>Problema informado:</strong>
-        </p>
-
-        <div class="description-box">
-            {{ item.description }}
-        </div>
-
 
         {% if item.created_at %}
 
-            <p>
-                <strong>Aberta em:</strong>
+        <div>
+
+            <span class="detail-label">
+                ABERTA EM
+            </span>
+
+            <strong>
                 {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
-            </p>
+            </strong>
+
+        </div>
 
         {% endif %}
 
-    </div>
+    </section>
 
 
-    <!-- =================================================
-         ANEXOS
-    ================================================== -->
+    <!-- DADOS DA SOLICITAÇÃO -->
+    <section class="detail-card">
 
-    {% if item.attachments %}
+        <div class="card-heading">
 
-        <div class="card">
+            <div>
+                <span class="card-icon">📋</span>
 
-            <h2>Fotos / Vídeos</h2>
-
-            <div class="attachments">
-
-                {% for file in item.attachments %}
-
-                    {% set ext = file.filename.lower().split('.')[-1] %}
-
-                    {% if ext in ['jpg', 'jpeg', 'png', 'webp'] %}
-
-                        <div class="attachment">
-
-                            <img src="/uploads/{{ file.filename }}"
-                                 alt="{{ file.original_name }}">
-
-                            <p>
-                                {{ file.original_name }}
-                            </p>
-
-                        </div>
-
-                    {% elif ext in ['mp4', 'mov', 'webm'] %}
-
-                        <div class="attachment">
-
-                            <video controls>
-                                <source src="/uploads/{{ file.filename }}">
-                            </video>
-
-                            <p>
-                                {{ file.original_name }}
-                            </p>
-
-                        </div>
-
-                    {% endif %}
-
-                {% endfor %}
-
+                <div>
+                    <h2>Dados da solicitação</h2>
+                    <p>Informações registradas pelo solicitante.</p>
+                </div>
             </div>
 
         </div>
+
+        <div class="info-grid">
+
+            <div class="info-item">
+                <span>Solicitante</span>
+                <strong>{{ item.requester.name }}</strong>
+            </div>
+
+            <div class="info-item">
+                <span>Setor</span>
+                <strong>{{ item.sector }}</strong>
+            </div>
+
+            <div class="info-item">
+                <span>Equipamento / Local</span>
+                <strong>{{ item.equipment }}</strong>
+            </div>
+
+            <div class="info-item">
+                <span>Prioridade</span>
+                <strong>{{ item.priority }}</strong>
+            </div>
+
+        </div>
+
+        <div class="description-section">
+
+            <span>Problema informado</span>
+
+            <div class="description-box">
+                {{ item.description }}
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ANEXOS -->
+    {% if item.attachments %}
+
+    <section class="detail-card">
+
+        <div class="card-heading">
+
+            <div>
+                <span class="card-icon">📎</span>
+
+                <div>
+                    <h2>Fotos e vídeos</h2>
+                    <p>Arquivos anexados à solicitação.</p>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="attachments">
+
+            {% for file in item.attachments %}
+
+                {% set ext = file.filename.lower().split('.')[-1] %}
+
+                {% if ext in ['jpg', 'jpeg', 'png', 'webp'] %}
+
+                    <div class="attachment">
+
+                        <img src="/uploads/{{ file.filename }}"
+                             alt="{{ file.original_name }}">
+
+                        <span>
+                            {{ file.original_name }}
+                        </span>
+
+                    </div>
+
+                {% elif ext in ['mp4', 'mov', 'webm'] %}
+
+                    <div class="attachment">
+
+                        <video controls>
+                            <source src="/uploads/{{ file.filename }}">
+                        </video>
+
+                        <span>
+                            {{ file.original_name }}
+                        </span>
+
+                    </div>
+
+                {% endif %}
+
+            {% endfor %}
+
+        </div>
+
+    </section>
 
     {% endif %}
 
 
-    <!-- =================================================
-         ÁREA DA MANUTENÇÃO / ADMIN
-    ================================================== -->
+    <!-- =====================================================
+         ÁREA ADM / MANUTENÇÃO
+    ====================================================== -->
 
     {% if user.role in ["manutencao", "adm"] %}
 
 
-        <!-- =============================================
-             AGENDAR
-        ============================================== -->
-
+        <!-- AGENDAMENTO -->
         {% if item.status == "PENDENTE" %}
 
-            <div class="card">
+        <section class="detail-card action-card">
 
-                <h2>Agendar atendimento</h2>
+            <div class="card-heading">
 
-                <p>
-                    Defina quem realizará o serviço e quando o atendimento
-                    deverá ser realizado.
-                </p>
+                <div>
+                    <span class="card-icon">📅</span>
 
+                    <div>
+                        <h2>Agendar atendimento</h2>
+                        <p>
+                            Defina o responsável e a data prevista para execução.
+                        </p>
+                    </div>
+                </div>
 
-                <form method="post"
-                      action="/solicitacao/{{ item.id }}/agendar">
+            </div>
 
+            <form method="post"
+                  action="/solicitacao/{{ item.id }}/agendar"
+                  class="detail-form">
 
-                    <label>
-                        Funcionário responsável
-                    </label>
+                <div class="form-grid">
 
-                    <select name="scheduled_employee" required>
+                    <div class="form-group">
 
-                        <option value="">
-                            Selecione o funcionário
-                        </option>
+                        <label>
+                            Funcionário responsável
+                        </label>
 
-                        {% for employee in maintenance_employees %}
+                        <select name="scheduled_employee" required>
+
+                            <option value="">
+                                Selecione o funcionário
+                            </option>
+
+                            {% for employee in maintenance_employees %}
 
                             <option value="{{ employee }}">
                                 {{ employee }}
                             </option>
 
-                        {% endfor %}
+                            {% endfor %}
 
-                    </select>
+                        </select>
 
+                    </div>
 
-                    <label>
-                        Data e horário previstos
-                    </label>
+                    <div class="form-group">
 
-                    <input type="datetime-local"
-                           name="planned_at"
-                           required>
+                        <label>
+                            Data e horário previstos
+                        </label>
 
+                        <input type="datetime-local"
+                               name="planned_at"
+                               required>
+
+                    </div>
+
+                </div>
+
+                <div class="form-group">
 
                     <label>
                         Observação do agendamento
                     </label>
 
                     <textarea name="scheduling_note"
-                              rows="4"
+                              rows="3"
                               placeholder="Ex.: verificar equipamento antes do início da produção."></textarea>
 
+                </div>
 
-                    <button type="submit">
+                <div class="form-actions">
+
+                    <button type="submit"
+                            class="btn btn-primary btn-large">
                         📅 Agendar Atendimento
                     </button>
 
-                </form>
+                </div>
 
-            </div>
+            </form>
+
+        </section>
 
         {% endif %}
 
 
-        <!-- =============================================
-             INFORMAÇÕES DO AGENDAMENTO
-        ============================================== -->
-
+        <!-- AGENDAMENTO REALIZADO -->
         {% if item.status == "AGENDADA" %}
 
-            <div class="card">
+        <section class="detail-card scheduled-card">
 
-                <h2>Atendimento agendado</h2>
+            <div class="card-heading">
 
+                <div>
+                    <span class="card-icon">📅</span>
+
+                    <div>
+                        <h2>Atendimento agendado</h2>
+                        <p>Programação atual da manutenção.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="info-grid">
 
                 {% if item.scheduled_employee %}
 
-                    <p>
-                        <strong>Funcionário programado:</strong><br>
-                        {{ item.scheduled_employee }}
-                    </p>
+                <div class="info-item">
+                    <span>Funcionário programado</span>
+                    <strong>{{ item.scheduled_employee }}</strong>
+                </div>
 
                 {% endif %}
-
 
                 {% if item.planned_at %}
 
-                    <p>
-                        <strong>Data e horário previstos:</strong><br>
+                <div class="info-item">
+                    <span>Data prevista</span>
+                    <strong>
                         {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
-                    </p>
+                    </strong>
+                </div>
 
                 {% endif %}
-
 
                 {% if item.assigned_to %}
 
-                    <p>
-                        <strong>Agendado por:</strong><br>
-                        {{ item.assigned_to.name }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.scheduling_note %}
-
-                    <p>
-                        <strong>Observação:</strong><br>
-                        {{ item.scheduling_note }}
-                    </p>
+                <div class="info-item">
+                    <span>Agendado por</span>
+                    <strong>{{ item.assigned_to.name }}</strong>
+                </div>
 
                 {% endif %}
 
             </div>
 
+            {% if item.scheduling_note %}
+
+            <div class="note-box">
+
+                <strong>Observação</strong>
+
+                <p>{{ item.scheduling_note }}</p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
         {% endif %}
 
 
-        <!-- =============================================
-             PRIORIDADE
-        ============================================== -->
+        <!-- PRIORIDADE -->
+        <section class="detail-card">
 
-        <div class="card">
+            <div class="card-heading">
 
-            <h2>Prioridade</h2>
+                <div>
+                    <span class="card-icon">⚡</span>
+
+                    <div>
+                        <h2>Prioridade</h2>
+                        <p>Altere a prioridade desta solicitação.</p>
+                    </div>
+                </div>
+
+            </div>
 
             <form method="post"
-                  action="/solicitacao/{{ item.id }}/prioridade">
+                  action="/solicitacao/{{ item.id }}/prioridade"
+                  class="priority-form">
 
                 <select name="priority">
 
@@ -311,47 +440,55 @@
 
                 </select>
 
-
-                <button type="submit">
-                    Alterar Prioridade
+                <button type="submit"
+                        class="btn btn-warning">
+                    ⚡ Alterar Prioridade
                 </button>
 
             </form>
 
-        </div>
+        </section>
 
 
-        <!-- =============================================
-             REGISTRO DA EXECUÇÃO
-        ============================================== -->
-
+        <!-- REGISTRO DA MANUTENÇÃO -->
         {% if item.status == "AGENDADA" or item.status == "EM ATENDIMENTO" %}
 
-            <div class="card">
+        <section class="detail-card execution-card">
 
-                <h2>Registro da Manutenção</h2>
+            <div class="card-heading">
 
-                <p>
-                    Após o serviço ser realizado, registre quem executou
-                    e os horários reais da manutenção.
-                </p>
+                <div>
+                    <span class="card-icon">🔧</span>
 
+                    <div>
+                        <h2>Registro da manutenção</h2>
+                        <p>
+                            Registre a execução e os resultados do serviço.
+                        </p>
+                    </div>
+                </div>
 
-                <form method="post"
-                      action="/solicitacao/{{ item.id }}/concluir">
+            </div>
 
+            <form method="post"
+                  action="/solicitacao/{{ item.id }}/concluir"
+                  class="detail-form">
 
-                    <label>
-                        Funcionário que realizou o serviço
-                    </label>
+                <div class="form-grid">
 
-                    <select name="executor_name" required>
+                    <div class="form-group">
 
-                        <option value="">
-                            Selecione o funcionário
-                        </option>
+                        <label>
+                            Funcionário que realizou o serviço
+                        </label>
 
-                        {% for employee in maintenance_employees %}
+                        <select name="executor_name" required>
+
+                            <option value="">
+                                Selecione o funcionário
+                            </option>
+
+                            {% for employee in maintenance_employees %}
 
                             <option value="{{ employee }}"
                                 {% if item.executor_name == employee %}
@@ -360,249 +497,252 @@
                                 {{ employee }}
                             </option>
 
-                        {% endfor %}
+                            {% endfor %}
 
-                    </select>
+                        </select>
 
+                    </div>
 
-                    <label>
-                        Início real
-                    </label>
+                    <div></div>
 
-                    <input type="datetime-local"
-                           name="started_at"
-                           value="{% if item.started_at %}{{ item.started_at.strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ now_datetime }}{% endif %}"
-                           required>
+                    <div class="form-group">
 
+                        <label>Início real</label>
 
-                    <label>
-                        Término real
-                    </label>
+                        <input type="datetime-local"
+                               name="started_at"
+                               value="{% if item.started_at %}{{ item.started_at.strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ now_datetime }}{% endif %}"
+                               required>
 
-                    <input type="datetime-local"
-                           name="finished_at"
-                           value="{% if item.finished_at %}{{ item.finished_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
-                           required>
+                    </div>
 
+                    <div class="form-group">
 
-                    <label>
-                        Diagnóstico
-                    </label>
+                        <label>Término real</label>
+
+                        <input type="datetime-local"
+                               name="finished_at"
+                               value="{% if item.finished_at %}{{ item.finished_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
+                               required>
+
+                    </div>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Diagnóstico</label>
 
                     <textarea name="diagnosis"
-                              rows="4"
+                              rows="3"
                               placeholder="O que foi identificado?">{{ item.diagnosis or "" }}</textarea>
 
+                </div>
 
-                    <label>
-                        Causa
-                    </label>
+                <div class="form-group">
+
+                    <label>Causa</label>
 
                     <textarea name="cause"
-                              rows="4"
+                              rows="3"
                               placeholder="Qual foi a causa do problema?">{{ item.cause or "" }}</textarea>
 
+                </div>
 
-                    <label>
-                        Serviço realizado
-                    </label>
+                <div class="form-group">
+
+                    <label>Serviço realizado</label>
 
                     <textarea name="service_done"
-                              rows="5"
+                              rows="4"
                               placeholder="O que foi feito para solucionar?">{{ item.service_done or "" }}</textarea>
 
+                </div>
 
-                    <label>
-                        Peças / Materiais utilizados
-                    </label>
+                <div class="form-group">
+
+                    <label>Peças / Materiais utilizados</label>
 
                     <textarea name="parts_used"
-                              rows="4"
+                              rows="3"
                               placeholder="Informe peças ou materiais utilizados.">{{ item.parts_used or "" }}</textarea>
 
+                </div>
 
-                    <label>
-                        Observações
-                    </label>
+                <div class="form-group">
+
+                    <label>Observações</label>
 
                     <textarea name="observations"
-                              rows="4"
+                              rows="3"
                               placeholder="Outras informações importantes.">{{ item.observations or "" }}</textarea>
 
+                </div>
 
-                    <button type="submit">
-                        ✅ Concluir Solicitação
+                <div class="form-actions">
+
+                    <button type="submit"
+                            class="btn btn-success btn-large">
+                        ✓ Concluir Solicitação
                     </button>
 
-                </form>
+                </div>
 
-            </div>
+            </form>
+
+        </section>
 
         {% endif %}
 
 
-        <!-- =============================================
-             CONCLUÍDA
-        ============================================== -->
-
+        <!-- CONCLUÍDA -->
         {% if item.status == "CONCLUÍDA" %}
 
-            <div class="card">
+        <section class="detail-card completed-card">
 
-                <h2>Manutenção realizada</h2>
+            <div class="card-heading">
 
+                <div>
+                    <span class="card-icon">✓</span>
+
+                    <div>
+                        <h2>Manutenção realizada</h2>
+                        <p>Registro final da execução do serviço.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="info-grid">
 
                 {% if item.scheduled_employee %}
-
-                    <p>
-                        <strong>Funcionário programado:</strong><br>
-                        {{ item.scheduled_employee }}
-                    </p>
-
+                <div class="info-item">
+                    <span>Funcionário programado</span>
+                    <strong>{{ item.scheduled_employee }}</strong>
+                </div>
                 {% endif %}
-
 
                 {% if item.executor_name %}
-
-                    <p>
-                        <strong>Funcionário que realizou:</strong><br>
-                        {{ item.executor_name }}
-                    </p>
-
+                <div class="info-item">
+                    <span>Funcionário que realizou</span>
+                    <strong>{{ item.executor_name }}</strong>
+                </div>
                 {% endif %}
-
 
                 {% if item.planned_at %}
-
-                    <p>
-                        <strong>Atendimento previsto:</strong><br>
-                        {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
-                    </p>
-
+                <div class="info-item">
+                    <span>Atendimento previsto</span>
+                    <strong>{{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}</strong>
+                </div>
                 {% endif %}
-
 
                 {% if item.started_at %}
-
-                    <p>
-                        <strong>Início real:</strong><br>
-                        {{ item.started_at.strftime('%d/%m/%Y %H:%M') }}
-                    </p>
-
+                <div class="info-item">
+                    <span>Início real</span>
+                    <strong>{{ item.started_at.strftime('%d/%m/%Y %H:%M') }}</strong>
+                </div>
                 {% endif %}
-
 
                 {% if item.finished_at %}
-
-                    <p>
-                        <strong>Término real:</strong><br>
-                        {{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.diagnosis %}
-
-                    <p>
-                        <strong>Diagnóstico:</strong><br>
-                        {{ item.diagnosis }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.cause %}
-
-                    <p>
-                        <strong>Causa:</strong><br>
-                        {{ item.cause }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.service_done %}
-
-                    <p>
-                        <strong>Serviço realizado:</strong><br>
-                        {{ item.service_done }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.parts_used %}
-
-                    <p>
-                        <strong>Peças / Materiais:</strong><br>
-                        {{ item.parts_used }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.observations %}
-
-                    <p>
-                        <strong>Observações:</strong><br>
-                        {{ item.observations }}
-                    </p>
-
-                {% endif %}
-
-
-                {% if item.finished_at %}
-
-                    <p>
-                        <strong>Concluída em:</strong>
-                        {{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}
-                    </p>
-
+                <div class="info-item">
+                    <span>Término real</span>
+                    <strong>{{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}</strong>
+                </div>
                 {% endif %}
 
             </div>
+
+            {% if item.diagnosis %}
+            <div class="result-box">
+                <span>Diagnóstico</span>
+                <p>{{ item.diagnosis }}</p>
+            </div>
+            {% endif %}
+
+            {% if item.cause %}
+            <div class="result-box">
+                <span>Causa</span>
+                <p>{{ item.cause }}</p>
+            </div>
+            {% endif %}
+
+            {% if item.service_done %}
+            <div class="result-box">
+                <span>Serviço realizado</span>
+                <p>{{ item.service_done }}</p>
+            </div>
+            {% endif %}
+
+            {% if item.parts_used %}
+            <div class="result-box">
+                <span>Peças / Materiais</span>
+                <p>{{ item.parts_used }}</p>
+            </div>
+            {% endif %}
+
+            {% if item.observations %}
+            <div class="result-box">
+                <span>Observações</span>
+                <p>{{ item.observations }}</p>
+            </div>
+            {% endif %}
+
+        </section>
 
         {% endif %}
 
     {% endif %}
 
 
-    <!-- =================================================
-         HISTÓRICO
-    ================================================== -->
-
+    <!-- HISTÓRICO -->
     {% if item.history %}
 
-        <div class="card">
+    <section class="detail-card">
 
-            <h2>Histórico</h2>
+        <div class="card-heading">
 
-            <div class="history">
+            <div>
+                <span class="card-icon">🕘</span>
 
-                {% for event in item.history|sort(attribute='created_at', reverse=true) %}
-
-                    <div class="history-item">
-
-                        <strong>
-                            {{ event.action }}
-                        </strong>
-
-                        <span>
-                            {{ event.created_at.strftime('%d/%m/%Y %H:%M') }}
-                        </span>
-
-                        <small>
-                            {{ event.user.name }}
-                        </small>
-
-                    </div>
-
-                {% endfor %}
-
+                <div>
+                    <h2>Histórico</h2>
+                    <p>Registro das movimentações desta solicitação.</p>
+                </div>
             </div>
 
         </div>
+
+        <div class="history">
+
+            {% for event in item.history|sort(attribute='created_at', reverse=true) %}
+
+            <div class="history-item">
+
+                <div class="history-dot"></div>
+
+                <div class="history-content">
+
+                    <strong>
+                        {{ event.action }}
+                    </strong>
+
+                    <span>
+                        {{ event.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </span>
+
+                    <small>
+                        {{ event.user.name }}
+                    </small>
+
+                </div>
+
+            </div>
+
+            {% endfor %}
+
+        </div>
+
+    </section>
 
     {% endif %}
 
