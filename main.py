@@ -1,13 +1,4 @@
-from pathlib import Path
-import zipfile, textwrap, os
-
-root = Path("/mnt/data/manutencao-fabrica")
-(root / "templates").mkdir(parents=True, exist_ok=True)
-(root / "static").mkdir(parents=True, exist_ok=True)
-(root / "uploads").mkdir(parents=True, exist_ok=True)
-
-files = {
-"main.py": r'''import os
+import os
 import secrets
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +19,11 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./manutencao.db")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# requirements.txt instala psycopg v3 ("psycopg[binary]"), mas o SQLAlchemy só usa esse
+# driver se o dialeto pedir "postgresql+psycopg://". Sem isso, ele tenta psycopg2 (não
+# instalado) e a conexão falha em produção (ex.: Render/Railway, que fornecem postgres://).
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
@@ -128,6 +124,16 @@ def require_role(user, roles):
         raise HTTPException(status_code=403, detail="Acesso não autorizado")
 
 
+def require_login(request: Request, db: Session):
+    """Retorna o usuário logado, ou None + já devolve o redirect para /login.
+    Sem isso, qualquer pessoa não autenticada que acessasse uma rota protegida
+    via URL direta recebia um erro 403 cru em vez de ser mandada para o login."""
+    user = current_user(request, db)
+    if not user:
+        return None, RedirectResponse("/login", status_code=303)
+    return user, None
+
+
 def add_history(db, req, user, action):
     db.add(History(request_id=req.id, user_id=user.id, action=action))
     db.commit()
@@ -182,7 +188,9 @@ def logout(request: Request):
 
 @app.get("/nova-solicitacao", response_class=HTMLResponse)
 def new_request_page(request: Request, db: Session = Depends(get_db)):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["lider", "adm"])
     return templates.TemplateResponse("nova_solicitacao.html", {"request": request, "user": user})
 
@@ -197,7 +205,9 @@ async def create_request(
     files: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
 ):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["lider", "adm"])
 
     priority = priority if priority in {"Baixa", "Média", "Alta", "Crítica"} else "Média"
@@ -233,7 +243,9 @@ async def create_request(
 
 @app.get("/minhas-solicitacoes", response_class=HTMLResponse)
 def my_requests(request: Request, db: Session = Depends(get_db)):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["lider"])
     rows = db.query(MaintenanceRequest).filter(MaintenanceRequest.requester_id == user.id).order_by(MaintenanceRequest.id.desc()).all()
     return templates.TemplateResponse("minhas_solicitacoes.html", {"request": request, "user": user, "rows": rows})
@@ -241,7 +253,9 @@ def my_requests(request: Request, db: Session = Depends(get_db)):
 
 @app.get("/painel", response_class=HTMLResponse)
 def dashboard(request: Request, status: str = "", priority: str = "", db: Session = Depends(get_db)):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["manutencao", "adm"])
 
     query = db.query(MaintenanceRequest)
@@ -280,7 +294,9 @@ def request_detail(request: Request, request_id: int, db: Session = Depends(get_
 
 @app.post("/solicitacao/{request_id}/assumir")
 def take_request(request: Request, request_id: int, db: Session = Depends(get_db)):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["manutencao", "adm"])
     req = db.get(MaintenanceRequest, request_id)
     if not req:
@@ -305,7 +321,9 @@ def finish_request(
     observations: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["manutencao", "adm"])
     req = db.get(MaintenanceRequest, request_id)
     if not req:
@@ -326,7 +344,9 @@ def finish_request(
 
 @app.post("/solicitacao/{request_id}/prioridade")
 def change_priority(request: Request, request_id: int, priority: str = Form(...), db: Session = Depends(get_db)):
-    user = current_user(request, db)
+    user, redirect = require_login(request, db)
+    if redirect:
+        return redirect
     require_role(user, ["manutencao", "adm"])
     req = db.get(MaintenanceRequest, request_id)
     if not req:
@@ -338,156 +358,3 @@ def change_priority(request: Request, request_id: int, priority: str = Form(...)
     db.commit()
     add_history(db, req, user, f"Prioridade alterada de {old} para {priority}")
     return RedirectResponse(f"/solicitacao/{request_id}", status_code=303)
-''',
-
-"requirements.txt": r'''fastapi==0.116.1
-uvicorn[standard]==0.35.0
-jinja2==3.1.6
-python-multipart==0.0.20
-itsdangerous==2.2.0
-sqlalchemy==2.0.43
-psycopg[binary]==3.2.9
-passlib==1.7.4
-''',
-
-"templates/base.html": r'''<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Manutenção{% endblock %}</title>
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-<header class="topbar">
-  <div><strong>MANUTENÇÃO</strong><span class="sub"> | Fábrica de Ração</span></div>
-  {% if user %}
-  <div class="userbar">{{ user.name }} · <a href="/logout">Sair</a></div>
-  {% endif %}
-</header>
-<main class="container">{% block content %}{% endblock %}</main>
-</body>
-</html>''',
-
-"templates/login.html": r'''{% extends "base.html" %}{% block title %}Login{% endblock %}
-{% block content %}
-<div class="login-card">
-<h1>Acesso ao sistema</h1>
-<p class="muted">Solicitações e acompanhamento de manutenção</p>
-{% if error %}<div class="alert">{{ error }}</div>{% endif %}
-<form method="post" action="/login">
-<label>Usuário<input name="username" required autofocus></label>
-<label>Senha<input type="password" name="password" required></label>
-<button class="btn primary">Entrar</button>
-</form>
-</div>
-{% endblock %}''',
-
-"templates/nova_solicitacao.html": r'''{% extends "base.html" %}{% block title %}Nova solicitação{% endblock %}
-{% block content %}
-<div class="page-head"><div><h1>Solicitar manutenção</h1><p class="muted">Informe o problema. A avaliação técnica será feita pela manutenção.</p></div></div>
-<form class="card form" method="post" enctype="multipart/form-data">
-<label>Setor
-<input name="sector" placeholder="Digite o setor" required></label>
-<label>Equipamento / Local
-<input name="equipment" placeholder="Digite o equipamento ou local" required></label>
-<label>Descreva o problema
-<textarea name="description" rows="7" placeholder="Descreva o que está acontecendo..." required></textarea></label>
-<label>Foto ou vídeo
-<input type="file" name="files" multiple accept="image/*,video/*"></label>
-<div>
-<label>Prioridade</label>
-<div class="priorities">
-<label><input type="radio" name="priority" value="Baixa"> Baixa</label>
-<label><input type="radio" name="priority" value="Média" checked> Média</label>
-<label><input type="radio" name="priority" value="Alta"> Alta</label>
-<label><input type="radio" name="priority" value="Crítica"> Crítica</label>
-</div>
-</div>
-<button class="btn primary">Enviar solicitação</button>
-</form>
-{% endblock %}''',
-
-"templates/minhas_solicitacoes.html": r'''{% extends "base.html" %}{% block title %}Minhas solicitações{% endblock %}
-{% block content %}
-<div class="page-head"><h1>Minhas solicitações</h1><a class="btn primary" href="/nova-solicitacao">+ Nova solicitação</a></div>
-<div class="table-card"><table><thead><tr><th>Nº</th><th>Setor</th><th>Equipamento</th><th>Prioridade</th><th>Status</th><th>Data</th></tr></thead>
-<tbody>{% for x in rows %}<tr onclick="location.href='/solicitacao/{{x.id}}'"><td>#{{ "%06d"|format(x.id) }}</td><td>{{x.sector}}</td><td>{{x.equipment}}</td><td><span class="priority p-{{x.priority|lower|replace('í','i')|replace('é','e')}}">● {{x.priority}}</span></td><td><span class="status">{{x.status}}</span></td><td>{{x.created_at.strftime("%d/%m/%Y %H:%M")}}</td></tr>{% else %}<tr><td colspan="6" class="empty">Nenhuma solicitação encontrada.</td></tr>{% endfor %}</tbody></table></div>
-{% endblock %}''',
-
-"templates/painel.html": r'''{% extends "base.html" %}{% block title %}Painel{% endblock %}
-{% block content %}
-<div class="page-head"><div><h1>Painel de manutenção</h1><p class="muted">Acompanhamento das solicitações</p></div></div>
-<div class="cards">
-<div class="metric"><span>Pendentes</span><strong>{{counts.pendente}}</strong></div>
-<div class="metric"><span>Em atendimento</span><strong>{{counts.atendimento}}</strong></div>
-<div class="metric"><span>Concluídas</span><strong>{{counts.concluida}}</strong></div>
-</div>
-<form class="filters" method="get">
-<select name="status"><option value="">Todos os status</option><option {% if status=="PENDENTE" %}selected{% endif %}>PENDENTE</option><option {% if status=="EM ATENDIMENTO" %}selected{% endif %}>EM ATENDIMENTO</option><option {% if status=="CONCLUÍDA" %}selected{% endif %}>CONCLUÍDA</option></select>
-<select name="priority"><option value="">Todas as prioridades</option><option>Baixa</option><option>Média</option><option>Alta</option><option>Crítica</option></select>
-<button class="btn">Filtrar</button>
-</form>
-<div class="table-card"><table><thead><tr><th>Nº</th><th>Solicitante</th><th>Setor</th><th>Equipamento</th><th>Prioridade</th><th>Status</th><th>Data</th></tr></thead>
-<tbody>{% for x in rows %}<tr onclick="location.href='/solicitacao/{{x.id}}'"><td>#{{ "%06d"|format(x.id) }}</td><td>{{x.requester.name}}</td><td>{{x.sector}}</td><td>{{x.equipment}}</td><td>{{x.priority}}</td><td>{{x.status}}</td><td>{{x.created_at.strftime("%d/%m/%Y %H:%M")}}</td></tr>{% else %}<tr><td colspan="7" class="empty">Nenhuma solicitação encontrada.</td></tr>{% endfor %}</tbody></table></div>
-{% endblock %}''',
-
-"templates/detalhe.html": r'''{% extends "base.html" %}{% block title %}Solicitação #{{"%06d"|format(item.id)}}{% endblock %}
-{% block content %}
-<div class="page-head"><div><h1>Solicitação #{{"%06d"|format(item.id)}}</h1><p class="muted">{{item.created_at.strftime("%d/%m/%Y %H:%M")}} · {{item.requester.name}}</p></div><span class="status big">{{item.status}}</span></div>
-<div class="grid">
-<section class="card">
-<h2>Solicitação</h2>
-<div class="info"><b>Setor</b><span>{{item.sector}}</span><b>Equipamento / Local</b><span>{{item.equipment}}</span><b>Prioridade</b><span>{{item.priority}}</span><b>Problema</b><p>{{item.description}}</p></div>
-{% if item.attachments %}<h3>Anexos</h3><div class="attachments">{% for a in item.attachments %}<a href="/uploads/{{a.filename}}" target="_blank">{{a.original_name}}</a>{% endfor %}</div>{% endif %}
-</section>
-{% if user.role in ["manutencao","adm"] %}
-<section class="card">
-<h2>Atendimento</h2>
-{% if item.status != "CONCLUÍDA" %}
-<form method="post" action="/solicitacao/{{item.id}}/assumir"><button class="btn primary">Assumir / iniciar atendimento</button></form>
-<hr>
-<form method="post" action="/solicitacao/{{item.id}}/concluir">
-<label>Diagnóstico<textarea name="diagnosis" rows="3"></textarea></label>
-<label>Causa<textarea name="cause" rows="3"></textarea></label>
-<label>Serviço realizado<textarea name="service_done" rows="4" required></textarea></label>
-<label>Peças utilizadas<textarea name="parts_used" rows="3"></textarea></label>
-<label>Observações<textarea name="observations" rows="3"></textarea></label>
-<button class="btn success">Concluir solicitação</button>
-</form>
-<hr>
-<form method="post" action="/solicitacao/{{item.id}}/prioridade">
-<label>Alterar prioridade<select name="priority">{% for p in ["Baixa","Média","Alta","Crítica"] %}<option {% if item.priority==p %}selected{% endif %}>{{p}}</option>{% endfor %}</select></label>
-<button class="btn">Salvar prioridade</button>
-</form>
-{% else %}
-<div class="success-box">Serviço concluído em {{item.finished_at.strftime("%d/%m/%Y %H:%M")}}.</div>
-{% endif %}
-</section>
-{% endif %}
-</div>
-{% endblock %}''',
-
-"static/style.css": r'''*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f6f8;color:#17202a}.topbar{height:64px;background:#17202a;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 28px}.topbar .sub{opacity:.7;font-weight:400}.topbar a{color:#fff;text-decoration:none}.container{max-width:1180px;margin:0 auto;padding:30px 18px}.page-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}.page-head h1{margin:0 0 5px}.muted{color:#697586}.card,.table-card,.login-card{background:#fff;border:1px solid #e3e7eb;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.04)}.card{padding:24px}.login-card{max-width:420px;margin:70px auto;padding:30px}.form{max-width:760px}.form label,.card form label{display:block;font-weight:600;margin-bottom:17px}.form input,.form textarea,.card input,.card textarea,.card select,.filters select{display:block;width:100%;margin-top:7px;border:1px solid #cbd2d9;border-radius:9px;padding:12px;font:inherit;background:#fff}.btn{border:0;border-radius:9px;padding:11px 17px;background:#e8edf2;color:#17202a;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}.btn.primary{background:#1769e0;color:#fff}.btn.success{background:#16834b;color:#fff}.alert{background:#fde8e8;color:#a61b1b;padding:11px;border-radius:8px;margin:12px 0 18px}.priorities{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 20px}.priorities label{font-weight:500!important}.priorities input{width:auto;display:inline}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:20px}.metric{background:#fff;border:1px solid #e3e7eb;border-radius:14px;padding:20px}.metric span{color:#697586}.metric strong{display:block;font-size:32px;margin-top:8px}.filters{display:flex;gap:10px;margin-bottom:18px}.filters select{width:auto;min-width:190px;margin:0}.table-card{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:14px 13px;border-bottom:1px solid #edf0f2;white-space:nowrap}th{font-size:13px;color:#697586;background:#fafbfc}tbody tr{cursor:pointer}tbody tr:hover{background:#f8fafc}.empty{text-align:center;padding:35px;color:#697586}.status{display:inline-block;padding:6px 10px;border-radius:999px;background:#edf1f5;font-size:12px;font-weight:800}.status.big{font-size:14px}.priority{font-weight:700}.p-baixa{color:#16834b}.p-media{color:#a46a00}.p-alta{color:#c75a00}.p-critica{color:#b42318}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.info{display:grid;grid-template-columns:150px 1fr;gap:12px}.info p{grid-column:1/-1;background:#f7f8fa;padding:14px;border-radius:9px;white-space:pre-wrap}.attachments{display:flex;flex-wrap:wrap;gap:8px}.attachments a{padding:8px 10px;background:#edf3ff;border-radius:8px;text-decoration:none;color:#1769e0}.success-box{padding:14px;background:#e8f7ee;color:#146c3a;border-radius:9px}hr{border:0;border-top:1px solid #e5e7eb;margin:25px 0}@media(max-width:800px){.cards,.grid{grid-template-columns:1fr}.topbar{padding:0 15px}.container{padding:20px 12px}.page-head{align-items:flex-start;flex-direction:column}.filters{flex-direction:column}.filters select{width:100%}.info{grid-template-columns:1fr}th,td{padding:11px 9px}.sub{display:none}}'''
-}
-
-for rel, content in files.items():
-    p = root / rel
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content, encoding="utf-8")
-
-(root / "README.md").write_text("""# Sistema de Manutenção — Fábrica de Ração
-
-V1 de um sistema web para solicitações e acompanhamento de manutenção.
-
-## Perfis
-- Líder de Produção: abre e acompanha solicitações.
-- Manutenção: recebe, assume, executa e conclui.
-- Administrativo: acompanha o painel.
-
-## Rodar localmente
-```bash
-python -m venv .venv
-.venv\\Scripts\\activate
-pip install -r requirements.txt
-uvicorn main:app --reload
