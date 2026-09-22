@@ -12,6 +12,7 @@
 <div class="container">
 
     <div class="topbar">
+
         <div>
             <h1>Solicitação #{{ item.id }}</h1>
             <p>{{ item.sector }} — {{ item.equipment }}</p>
@@ -22,8 +23,13 @@
         {% else %}
             <a href="/painel">Voltar</a>
         {% endif %}
+
     </div>
 
+
+    <!-- =================================================
+         DADOS DA SOLICITAÇÃO
+    ================================================== -->
 
     <div class="card">
 
@@ -44,7 +50,9 @@
 
         </div>
 
+
         <hr>
+
 
         <p>
             <strong>Solicitante:</strong>
@@ -69,15 +77,22 @@
             {{ item.description }}
         </div>
 
+
         {% if item.created_at %}
+
             <p>
                 <strong>Aberta em:</strong>
                 {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
             </p>
+
         {% endif %}
 
     </div>
 
+
+    <!-- =================================================
+         ANEXOS
+    ================================================== -->
 
     {% if item.attachments %}
 
@@ -94,19 +109,28 @@
                     {% if ext in ['jpg', 'jpeg', 'png', 'webp'] %}
 
                         <div class="attachment">
+
                             <img src="/uploads/{{ file.filename }}"
                                  alt="{{ file.original_name }}">
-                            <p>{{ file.original_name }}</p>
+
+                            <p>
+                                {{ file.original_name }}
+                            </p>
+
                         </div>
 
                     {% elif ext in ['mp4', 'mov', 'webm'] %}
 
                         <div class="attachment">
+
                             <video controls>
                                 <source src="/uploads/{{ file.filename }}">
                             </video>
 
-                            <p>{{ file.original_name }}</p>
+                            <p>
+                                {{ file.original_name }}
+                            </p>
+
                         </div>
 
                     {% endif %}
@@ -120,23 +144,74 @@
     {% endif %}
 
 
+    <!-- =================================================
+         ÁREA DA MANUTENÇÃO / ADMIN
+    ================================================== -->
+
     {% if user.role in ["manutencao", "adm"] %}
+
+
+        <!-- =============================================
+             AGENDAR
+        ============================================== -->
 
         {% if item.status == "PENDENTE" %}
 
             <div class="card">
 
-                <h2>Atendimento</h2>
+                <h2>Agendar atendimento</h2>
 
                 <p>
-                    Essa solicitação ainda não foi assumida pela manutenção.
+                    Defina quem realizará o serviço e quando o atendimento
+                    deverá ser realizado.
                 </p>
 
+
                 <form method="post"
-                      action="/solicitacao/{{ item.id }}/assumir">
+                      action="/solicitacao/{{ item.id }}/agendar">
+
+
+                    <label>
+                        Funcionário responsável
+                    </label>
+
+                    <select name="scheduled_employee" required>
+
+                        <option value="">
+                            Selecione o funcionário
+                        </option>
+
+                        {% for employee in maintenance_employees %}
+
+                            <option value="{{ employee }}">
+                                {{ employee }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+
+                    <label>
+                        Data e horário previstos
+                    </label>
+
+                    <input type="datetime-local"
+                           name="planned_at"
+                           required>
+
+
+                    <label>
+                        Observação do agendamento
+                    </label>
+
+                    <textarea name="scheduling_note"
+                              rows="4"
+                              placeholder="Ex.: verificar equipamento antes do início da produção."></textarea>
+
 
                     <button type="submit">
-                        🔧 Assumir Solicitação
+                        📅 Agendar Atendimento
                     </button>
 
                 </form>
@@ -145,6 +220,65 @@
 
         {% endif %}
 
+
+        <!-- =============================================
+             INFORMAÇÕES DO AGENDAMENTO
+        ============================================== -->
+
+        {% if item.status == "AGENDADA" %}
+
+            <div class="card">
+
+                <h2>Atendimento agendado</h2>
+
+
+                {% if item.scheduled_employee %}
+
+                    <p>
+                        <strong>Funcionário programado:</strong><br>
+                        {{ item.scheduled_employee }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.planned_at %}
+
+                    <p>
+                        <strong>Data e horário previstos:</strong><br>
+                        {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.assigned_to %}
+
+                    <p>
+                        <strong>Agendado por:</strong><br>
+                        {{ item.assigned_to.name }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.scheduling_note %}
+
+                    <p>
+                        <strong>Observação:</strong><br>
+                        {{ item.scheduling_note }}
+                    </p>
+
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+
+        <!-- =============================================
+             PRIORIDADE
+        ============================================== -->
 
         <div class="card">
 
@@ -177,6 +311,7 @@
 
                 </select>
 
+
                 <button type="submit">
                     Alterar Prioridade
                 </button>
@@ -186,44 +321,109 @@
         </div>
 
 
-        {% if item.status == "EM ATENDIMENTO" %}
+        <!-- =============================================
+             REGISTRO DA EXECUÇÃO
+        ============================================== -->
+
+        {% if item.status == "AGENDADA" or item.status == "EM ATENDIMENTO" %}
 
             <div class="card">
 
                 <h2>Registro da Manutenção</h2>
 
+                <p>
+                    Após o serviço ser realizado, registre quem executou
+                    e os horários reais da manutenção.
+                </p>
+
+
                 <form method="post"
                       action="/solicitacao/{{ item.id }}/concluir">
 
-                    <label>Diagnóstico</label>
+
+                    <label>
+                        Funcionário que realizou o serviço
+                    </label>
+
+                    <select name="executor_name" required>
+
+                        <option value="">
+                            Selecione o funcionário
+                        </option>
+
+                        {% for employee in maintenance_employees %}
+
+                            <option value="{{ employee }}"
+                                {% if item.executor_name == employee %}
+                                    selected
+                                {% endif %}>
+                                {{ employee }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+
+                    <label>
+                        Início real
+                    </label>
+
+                    <input type="datetime-local"
+                           name="started_at"
+                           value="{% if item.started_at %}{{ item.started_at.strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ now_datetime }}{% endif %}"
+                           required>
+
+
+                    <label>
+                        Término real
+                    </label>
+
+                    <input type="datetime-local"
+                           name="finished_at"
+                           value="{% if item.finished_at %}{{ item.finished_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
+                           required>
+
+
+                    <label>
+                        Diagnóstico
+                    </label>
 
                     <textarea name="diagnosis"
                               rows="4"
                               placeholder="O que foi identificado?">{{ item.diagnosis or "" }}</textarea>
 
 
-                    <label>Causa</label>
+                    <label>
+                        Causa
+                    </label>
 
                     <textarea name="cause"
                               rows="4"
                               placeholder="Qual foi a causa do problema?">{{ item.cause or "" }}</textarea>
 
 
-                    <label>Serviço realizado</label>
+                    <label>
+                        Serviço realizado
+                    </label>
 
                     <textarea name="service_done"
                               rows="5"
                               placeholder="O que foi feito para solucionar?">{{ item.service_done or "" }}</textarea>
 
 
-                    <label>Peças / Materiais utilizados</label>
+                    <label>
+                        Peças / Materiais utilizados
+                    </label>
 
                     <textarea name="parts_used"
                               rows="4"
                               placeholder="Informe peças ou materiais utilizados.">{{ item.parts_used or "" }}</textarea>
 
 
-                    <label>Observações</label>
+                    <label>
+                        Observações
+                    </label>
 
                     <textarea name="observations"
                               rows="4"
@@ -241,52 +441,124 @@
         {% endif %}
 
 
+        <!-- =============================================
+             CONCLUÍDA
+        ============================================== -->
+
         {% if item.status == "CONCLUÍDA" %}
 
             <div class="card">
 
                 <h2>Manutenção realizada</h2>
 
+
+                {% if item.scheduled_employee %}
+
+                    <p>
+                        <strong>Funcionário programado:</strong><br>
+                        {{ item.scheduled_employee }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.executor_name %}
+
+                    <p>
+                        <strong>Funcionário que realizou:</strong><br>
+                        {{ item.executor_name }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.planned_at %}
+
+                    <p>
+                        <strong>Atendimento previsto:</strong><br>
+                        {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.started_at %}
+
+                    <p>
+                        <strong>Início real:</strong><br>
+                        {{ item.started_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+
+                {% endif %}
+
+
+                {% if item.finished_at %}
+
+                    <p>
+                        <strong>Término real:</strong><br>
+                        {{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+
+                {% endif %}
+
+
                 {% if item.diagnosis %}
+
                     <p>
                         <strong>Diagnóstico:</strong><br>
                         {{ item.diagnosis }}
                     </p>
+
                 {% endif %}
 
+
                 {% if item.cause %}
+
                     <p>
                         <strong>Causa:</strong><br>
                         {{ item.cause }}
                     </p>
+
                 {% endif %}
 
+
                 {% if item.service_done %}
+
                     <p>
                         <strong>Serviço realizado:</strong><br>
                         {{ item.service_done }}
                     </p>
+
                 {% endif %}
 
+
                 {% if item.parts_used %}
+
                     <p>
                         <strong>Peças / Materiais:</strong><br>
                         {{ item.parts_used }}
                     </p>
+
                 {% endif %}
 
+
                 {% if item.observations %}
+
                     <p>
                         <strong>Observações:</strong><br>
                         {{ item.observations }}
                     </p>
+
                 {% endif %}
 
+
                 {% if item.finished_at %}
+
                     <p>
                         <strong>Concluída em:</strong>
                         {{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}
                     </p>
+
                 {% endif %}
 
             </div>
@@ -295,6 +567,10 @@
 
     {% endif %}
 
+
+    <!-- =================================================
+         HISTÓRICO
+    ================================================== -->
 
     {% if item.history %}
 
@@ -308,7 +584,9 @@
 
                     <div class="history-item">
 
-                        <strong>{{ event.action }}</strong>
+                        <strong>
+                            {{ event.action }}
+                        </strong>
 
                         <span>
                             {{ event.created_at.strftime('%d/%m/%Y %H:%M') }}
