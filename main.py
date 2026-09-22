@@ -1360,3 +1360,37 @@ def change_priority(
         f"/solicitacao/{request_id}",
         status_code=303,
     )
+@app.get("/solicitacao/{request_id}/imprimir", response_class=HTMLResponse)
+def imprimir_ordem(
+    request: Request,
+    request_id: int,
+    db: Session = Depends(get_db)
+):
+    user = get_current_user(request, db)
+
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    if user.role != "adm":
+        return RedirectResponse(
+            f"/solicitacao/{request_id}",
+            status_code=303
+        )
+
+    item = (
+        db.query(MaintenanceRequest)
+        .filter(MaintenanceRequest.id == request_id)
+        .first()
+    )
+
+    if not item:
+        return RedirectResponse("/painel", status_code=303)
+
+    return templates.TemplateResponse(
+        "ordem_servico.html",
+        {
+            "request": request,
+            "user": user,
+            "item": item
+        }
+    )
