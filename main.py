@@ -53,7 +53,11 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(30), nullable=False)  # lider, manutencao, adm
     active = Column(Integer, default=1)
-    requests = relationship("MaintenanceRequest", back_populates="requester")
+    requests = relationship(
+    "MaintenanceRequest",
+    foreign_keys="MaintenanceRequest.requester_id",
+    back_populates="requester",
+)
 
 
 class MaintenanceRequest(Base):
