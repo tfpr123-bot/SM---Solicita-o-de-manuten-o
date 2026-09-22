@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Solicitação</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="topbar">
+        <h1>Nova Solicitação</h1>
+        <a href="/logout">Sair</a>
+    </div>
+
+    <div class="card">
+        <form method="post" action="/nova-solicitacao" enctype="multipart/form-data">
+
+            <label>Setor</label>
+            <input type="text" name="sector" placeholder="Ex.: Fábrica de Ração" required>
+
+            <label>Equipamento / Local</label>
+            <input type="text" name="equipment" placeholder="Ex.: Elevador 02" required>
+
+            <label>Descreva o problema</label>
+            <textarea name="description" rows="7"
+                placeholder="Explique o que aconteceu ou o que precisa ser verificado..."
+                required></textarea>
+
+            <label>Prioridade</label>
+            <select name="priority" required>
+                <option value="Baixa">Baixa</option>
+                <option value="Média" selected>Média</option>
+                <option value="Alta">Alta</option>
+                <option value="Crítica">Crítica</option>
+            </select>
+
+            <label>Foto ou vídeo (opcional)</label>
+            <input type="file" name="files" multiple accept="image/*,video/*">
+
+            <button type="submit">Enviar Solicitação</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
