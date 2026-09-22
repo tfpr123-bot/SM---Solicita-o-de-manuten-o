@@ -3,223 +3,707 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Manutenção</title>
+
+    <title>Dashboard | Manutenção</title>
+
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
 
-<div class="container">
+<body class="dashboard-page">
 
-    <div class="topbar">
-        <div>
-            <h1>Painel de Manutenção</h1>
-            <p>Olá, {{ user.name }}</p>
-        </div>
+<div class="app-layout">
 
-        <a href="/logout">Sair</a>
-    </div>
+    <!-- =====================================================
+         SIDEBAR
+         ===================================================== -->
 
+    <aside class="sidebar">
 
-    <div class="dashboard-cards">
+        <div class="sidebar-brand">
 
-        <div class="dashboard-card">
-            <span>Pendentes</span>
-            <strong>{{ counts.pendente }}</strong>
-        </div>
-
-        <div class="dashboard-card">
-            <span>Agendadas</span>
-            <strong>{{ counts.agendada }}</strong>
-        </div>
-
-        <div class="dashboard-card">
-            <span>Em atendimento</span>
-            <strong>{{ counts.atendimento }}</strong>
-        </div>
-
-        <div class="dashboard-card">
-            <span>Concluídas</span>
-            <strong>{{ counts.concluida }}</strong>
-        </div>
-
-    </div>
-
-
-    <div class="filters card">
-
-        <form method="get" action="/painel">
+            <div class="brand-icon">
+                🔧
+            </div>
 
             <div>
-                <label>Status</label>
+                <strong>MANUTENÇÃO</strong>
+                <span>Gestão de Serviços</span>
+            </div>
 
-                <select name="status">
+        </div>
 
-                    <option value="">Todos</option>
 
-                    <option value="PENDENTE"
-                        {% if status == "PENDENTE" %}selected{% endif %}>
-                        Pendente
-                    </option>
+        <nav class="sidebar-nav">
 
-                    <option value="AGENDADA"
-                        {% if status == "AGENDADA" %}selected{% endif %}>
-                        Agendada
-                    </option>
+            <div class="nav-section-title">
+                MENU
+            </div>
 
-                    <option value="EM ATENDIMENTO"
-                        {% if status == "EM ATENDIMENTO" %}selected{% endif %}>
-                        Em atendimento
-                    </option>
+            <a href="/painel" class="nav-item active">
+                <span class="nav-icon">▦</span>
+                <span>Dashboard</span>
+            </a>
 
-                    <option value="CONCLUÍDA"
-                        {% if status == "CONCLUÍDA" %}selected{% endif %}>
-                        Concluída
-                    </option>
+            <a href="#solicitacoes" class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span>Solicitações</span>
 
-                </select>
+                {% if counts.pendente > 0 %}
+                    <span class="nav-badge">
+                        {{ counts.pendente }}
+                    </span>
+                {% endif %}
+            </a>
+
+        </nav>
+
+
+        <div class="sidebar-bottom">
+
+            <div class="sidebar-user">
+
+                <div class="user-avatar">
+                    {{ user.name[0]|upper }}
+                </div>
+
+                <div class="user-info">
+
+                    <strong>{{ user.name }}</strong>
+
+                    <span>
+                        {% if user.role == "adm" %}
+                            Administrador
+                        {% else %}
+                            Manutenção
+                        {% endif %}
+                    </span>
+
+                </div>
+
             </div>
 
 
+            <a href="/logout" class="logout-link">
+                <span>↪</span>
+                Sair do sistema
+            </a>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         CONTEÚDO PRINCIPAL
+         ===================================================== -->
+
+    <main class="main-content">
+
+        <!-- HEADER -->
+
+        <header class="dashboard-header">
+
             <div>
-                <label>Prioridade</label>
 
-                <select name="priority">
+                <div class="breadcrumb">
+                    Sistema / Dashboard
+                </div>
 
-                    <option value="">Todas</option>
+                <h1>Dashboard</h1>
 
-                    <option value="Baixa"
-                        {% if priority == "Baixa" %}selected{% endif %}>
-                        Baixa
-                    </option>
+                <p>
+                    Visão geral das solicitações de manutenção.
+                </p>
 
-                    <option value="Média"
-                        {% if priority == "Média" %}selected{% endif %}>
-                        Média
-                    </option>
-
-                    <option value="Alta"
-                        {% if priority == "Alta" %}selected{% endif %}>
-                        Alta
-                    </option>
-
-                    <option value="Crítica"
-                        {% if priority == "Crítica" %}selected{% endif %}>
-                        Crítica
-                    </option>
-
-                </select>
             </div>
 
 
-            <button type="submit">
-                Filtrar
-            </button>
+            <div class="header-user">
 
-        </form>
+                <div class="header-user-avatar">
+                    {{ user.name[0]|upper }}
+                </div>
 
-    </div>
+                <div>
+                    <strong>{{ user.name }}</strong>
+                    <span>Online</span>
+                </div>
+
+            </div>
+
+        </header>
 
 
-    {% if rows %}
+        <!-- =================================================
+             INDICADORES
+             ================================================= -->
 
-        <div class="requests">
+        <section class="dashboard-cards">
 
-            {% for item in rows %}
 
-                <a class="request-card"
-                   href="/solicitacao/{{ item.id }}">
+            <div class="metric-card metric-pending">
 
-                    <div class="request-header">
+                <div class="metric-top">
 
-                        <strong>
-                            #{{ item.id }} — {{ item.sector }}
-                        </strong>
+                    <span class="metric-label">
+                        PENDENTES
+                    </span>
 
-                        <span class="status {{ item.status|lower|replace(' ', '-') }}">
-                            {{ item.status }}
-                        </span>
-
+                    <div class="metric-icon">
+                        !
                     </div>
 
+                </div>
+
+                <strong class="metric-number">
+                    {{ counts.pendente }}
+                </strong>
+
+                <span class="metric-description">
+                    Aguardando atendimento
+                </span>
+
+            </div>
+
+
+            <div class="metric-card metric-scheduled">
+
+                <div class="metric-top">
+
+                    <span class="metric-label">
+                        AGENDADAS
+                    </span>
+
+                    <div class="metric-icon">
+                        ◷
+                    </div>
+
+                </div>
+
+                <strong class="metric-number">
+                    {{ counts.agendada }}
+                </strong>
+
+                <span class="metric-description">
+                    Serviços programados
+                </span>
+
+            </div>
+
+
+            <div class="metric-card metric-progress">
+
+                <div class="metric-top">
+
+                    <span class="metric-label">
+                        EM ATENDIMENTO
+                    </span>
+
+                    <div class="metric-icon">
+                        ⚙
+                    </div>
+
+                </div>
+
+                <strong class="metric-number">
+                    {{ counts.atendimento }}
+                </strong>
+
+                <span class="metric-description">
+                    Serviços em execução
+                </span>
+
+            </div>
+
+
+            <div class="metric-card metric-completed">
+
+                <div class="metric-top">
+
+                    <span class="metric-label">
+                        CONCLUÍDAS
+                    </span>
+
+                    <div class="metric-icon">
+                        ✓
+                    </div>
+
+                </div>
+
+                <strong class="metric-number">
+                    {{ counts.concluida }}
+                </strong>
+
+                <span class="metric-description">
+                    Serviços finalizados
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             FILTROS
+             ================================================= -->
+
+        <section class="filter-panel">
+
+            <div class="filter-heading">
+
+                <div class="filter-title">
+                    <span class="filter-title-icon">☷</span>
+
+                    <div>
+                        <strong>Filtrar solicitações</strong>
+                        <span>Refine os resultados abaixo</span>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <form method="get" action="/painel" class="filter-form">
+
+
+                <div class="filter-field">
+
+                    <label>Status</label>
+
+                    <select name="status">
+
+                        <option value="">
+                            Todos os status
+                        </option>
+
+                        <option value="PENDENTE"
+                            {% if status == "PENDENTE" %}selected{% endif %}>
+                            Pendente
+                        </option>
+
+                        <option value="AGENDADA"
+                            {% if status == "AGENDADA" %}selected{% endif %}>
+                            Agendada
+                        </option>
+
+                        <option value="EM ATENDIMENTO"
+                            {% if status == "EM ATENDIMENTO" %}selected{% endif %}>
+                            Em atendimento
+                        </option>
+
+                        <option value="CONCLUÍDA"
+                            {% if status == "CONCLUÍDA" %}selected{% endif %}>
+                            Concluída
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="filter-field">
+
+                    <label>Prioridade</label>
+
+                    <select name="priority">
+
+                        <option value="">
+                            Todas as prioridades
+                        </option>
+
+                        <option value="Baixa"
+                            {% if priority == "Baixa" %}selected{% endif %}>
+                            Baixa
+                        </option>
+
+                        <option value="Média"
+                            {% if priority == "Média" %}selected{% endif %}>
+                            Média
+                        </option>
+
+                        <option value="Alta"
+                            {% if priority == "Alta" %}selected{% endif %}>
+                            Alta
+                        </option>
+
+                        <option value="Crítica"
+                            {% if priority == "Crítica" %}selected{% endif %}>
+                            Crítica
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <button type="submit" class="filter-button">
+                    Aplicar filtros
+                </button>
+
+
+                {% if status or priority %}
+
+                    <a href="/painel" class="clear-filter">
+                        Limpar filtros
+                    </a>
+
+                {% endif %}
+
+            </form>
+
+        </section>
+
+
+        <!-- =================================================
+             SOLICITAÇÕES
+             ================================================= -->
+
+        <section class="requests-section" id="solicitacoes">
+
+
+            <div class="section-header">
+
+                <div>
+
+                    <h2>
+                        Solicitações de manutenção
+                    </h2>
 
                     <p>
-                        <strong>Equipamento / Local:</strong>
-                        {{ item.equipment }}
+                        Acompanhe os chamados registrados no sistema.
                     </p>
 
-
-                    <p class="description">
-                        {{ item.description }}
-                    </p>
+                </div>
 
 
-                    {% if item.scheduled_employee %}
+                <div class="total-requests">
 
-                        <p>
-                            <strong>Responsável programado:</strong>
-                            {{ item.scheduled_employee }}
-                        </p>
+                    <strong>{{ rows|length }}</strong>
 
-                    {% endif %}
+                    <span>
+                        solicitação{% if rows|length != 1 %}ões{% endif %}
+                    </span>
 
+                </div>
 
-                    {% if item.planned_at %}
-
-                        <p>
-                            <strong>Atendimento previsto:</strong>
-                            {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
-                        </p>
-
-                    {% endif %}
+            </div>
 
 
-                    {% if item.executor_name %}
-
-                        <p>
-                            <strong>Executado por:</strong>
-                            {{ item.executor_name }}
-                        </p>
-
-                    {% endif %}
+            {% if rows %}
 
 
-                    <div class="request-footer">
+                <div class="requests-table-wrapper">
 
-                        <span>
-                            Prioridade:
-                            <strong>{{ item.priority }}</strong>
-                        </span>
+                    <table class="requests-table">
 
-                        <span>
-                            Solicitante:
-                            {{ item.requester.name }}
-                        </span>
+                        <thead>
 
-                        <span>
-                            {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
-                        </span>
+                            <tr>
 
+                                <th>OS</th>
+
+                                <th>SETOR</th>
+
+                                <th>EQUIPAMENTO / LOCAL</th>
+
+                                <th>PRIORIDADE</th>
+
+                                <th>STATUS</th>
+
+                                <th>RESPONSÁVEL</th>
+
+                                <th>ABERTURA</th>
+
+                                <th></th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                        {% for item in rows %}
+
+                            <tr class="request-row"
+                                onclick="window.location='/solicitacao/{{ item.id }}'">
+
+
+                                <td>
+
+                                    <span class="order-number">
+                                        #{{ item.id }}
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    <div class="sector-cell">
+
+                                        <strong>
+                                            {{ item.sector }}
+                                        </strong>
+
+                                    </div>
+
+                                </td>
+
+
+                                <td>
+
+                                    <div class="equipment-cell">
+
+                                        <strong>
+                                            {{ item.equipment }}
+                                        </strong>
+
+                                        <span>
+                                            {{ item.description[:75] }}
+                                            {% if item.description|length > 75 %}...{% endif %}
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+
+                                <td>
+
+                                    {% if item.priority == "Crítica" %}
+
+                                        <span class="priority-badge priority-critical">
+                                            Crítica
+                                        </span>
+
+                                    {% elif item.priority == "Alta" %}
+
+                                        <span class="priority-badge priority-high">
+                                            Alta
+                                        </span>
+
+                                    {% elif item.priority == "Média" %}
+
+                                        <span class="priority-badge priority-medium">
+                                            Média
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="priority-badge priority-low">
+                                            Baixa
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="status-badge
+                                        {% if item.status == 'PENDENTE' %}
+                                            status-pendente
+                                        {% elif item.status == 'AGENDADA' %}
+                                            status-agendada
+                                        {% elif item.status == 'EM ATENDIMENTO' %}
+                                            status-atendimento
+                                        {% elif item.status == 'CONCLUÍDA' %}
+                                            status-concluida
+                                        {% endif %}
+                                    ">
+
+                                        <span class="status-dot"></span>
+
+                                        {{ item.status }}
+
+                                    </span>
+
+                                </td>
+
+
+                                <td>
+
+                                    {% if item.scheduled_employee %}
+
+                                        <div class="responsible-cell">
+
+                                            <div class="small-avatar">
+                                                {{ item.scheduled_employee[0]|upper }}
+                                            </div>
+
+                                            <span>
+                                                {{ item.scheduled_employee }}
+                                            </span>
+
+                                        </div>
+
+                                    {% elif item.executor_name %}
+
+                                        <div class="responsible-cell">
+
+                                            <div class="small-avatar">
+                                                {{ item.executor_name[0]|upper }}
+                                            </div>
+
+                                            <span>
+                                                {{ item.executor_name }}
+                                            </span>
+
+                                        </div>
+
+                                    {% else %}
+
+                                        <span class="not-assigned">
+                                            Não definido
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <td>
+
+                                    <div class="date-cell">
+
+                                        <strong>
+                                            {{ item.created_at.strftime('%d/%m/%Y') }}
+                                        </strong>
+
+                                        <span>
+                                            {{ item.created_at.strftime('%H:%M') }}
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+
+                                <td>
+
+                                    <span class="row-arrow">
+                                        →
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                <!-- MOBILE -->
+
+                <div class="mobile-request-list">
+
+                    {% for item in rows %}
+
+                        <a href="/solicitacao/{{ item.id }}"
+                           class="mobile-request-card">
+
+
+                            <div class="mobile-request-top">
+
+                                <span class="order-number">
+                                    #{{ item.id }}
+                                </span>
+
+                                <span class="status-badge
+                                    {% if item.status == 'PENDENTE' %}
+                                        status-pendente
+                                    {% elif item.status == 'AGENDADA' %}
+                                        status-agendada
+                                    {% elif item.status == 'EM ATENDIMENTO' %}
+                                        status-atendimento
+                                    {% elif item.status == 'CONCLUÍDA' %}
+                                        status-concluida
+                                    {% endif %}
+                                ">
+
+                                    <span class="status-dot"></span>
+
+                                    {{ item.status }}
+
+                                </span>
+
+                            </div>
+
+
+                            <h3>
+                                {{ item.equipment }}
+                            </h3>
+
+
+                            <span class="mobile-sector">
+                                {{ item.sector }}
+                            </span>
+
+
+                            <p>
+                                {{ item.description }}
+                            </p>
+
+
+                            <div class="mobile-request-bottom">
+
+                                <span>
+                                    {{ item.priority }}
+                                </span>
+
+                                <span>
+                                    {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </span>
+
+                            </div>
+
+                        </a>
+
+                    {% endfor %}
+
+                </div>
+
+
+            {% else %}
+
+
+                <div class="empty-state">
+
+                    <div class="empty-icon">
+                        ✓
                     </div>
 
-                </a>
+                    <h3>
+                        Nenhuma solicitação encontrada
+                    </h3>
 
-            {% endfor %}
+                    <p>
+                        Não existem solicitações para os filtros selecionados.
+                    </p>
 
-        </div>
+                    {% if status or priority %}
 
-    {% else %}
+                        <a href="/painel">
+                            Limpar filtros
+                        </a>
 
-        <div class="card empty">
+                    {% endif %}
 
-            <h2>Nenhuma solicitação encontrada</h2>
+                </div>
 
-            <p>
-                Não existem solicitações para os filtros selecionados.
-            </p>
 
-        </div>
+            {% endif %}
 
-    {% endif %}
+        </section>
+
+    </main>
 
 </div>
 
