@@ -15,14 +15,21 @@
             <h1>Painel de Manutenção</h1>
             <p>Olá, {{ user.name }}</p>
         </div>
+
         <a href="/logout">Sair</a>
     </div>
+
 
     <div class="dashboard-cards">
 
         <div class="dashboard-card">
             <span>Pendentes</span>
             <strong>{{ counts.pendente }}</strong>
+        </div>
+
+        <div class="dashboard-card">
+            <span>Agendadas</span>
+            <strong>{{ counts.agendada }}</strong>
         </div>
 
         <div class="dashboard-card">
@@ -37,6 +44,7 @@
 
     </div>
 
+
     <div class="filters card">
 
         <form method="get" action="/painel">
@@ -45,10 +53,17 @@
                 <label>Status</label>
 
                 <select name="status">
+
                     <option value="">Todos</option>
+
                     <option value="PENDENTE"
                         {% if status == "PENDENTE" %}selected{% endif %}>
                         Pendente
+                    </option>
+
+                    <option value="AGENDADA"
+                        {% if status == "AGENDADA" %}selected{% endif %}>
+                        Agendada
                     </option>
 
                     <option value="EM ATENDIMENTO"
@@ -60,13 +75,16 @@
                         {% if status == "CONCLUÍDA" %}selected{% endif %}>
                         Concluída
                     </option>
+
                 </select>
             </div>
+
 
             <div>
                 <label>Prioridade</label>
 
                 <select name="priority">
+
                     <option value="">Todas</option>
 
                     <option value="Baixa"
@@ -88,14 +106,19 @@
                         {% if priority == "Crítica" %}selected{% endif %}>
                         Crítica
                     </option>
+
                 </select>
             </div>
 
-            <button type="submit">Filtrar</button>
+
+            <button type="submit">
+                Filtrar
+            </button>
 
         </form>
 
     </div>
+
 
     {% if rows %}
 
@@ -103,7 +126,8 @@
 
             {% for item in rows %}
 
-                <a class="request-card" href="/solicitacao/{{ item.id }}">
+                <a class="request-card"
+                   href="/solicitacao/{{ item.id }}">
 
                     <div class="request-header">
 
@@ -117,14 +141,47 @@
 
                     </div>
 
+
                     <p>
                         <strong>Equipamento / Local:</strong>
                         {{ item.equipment }}
                     </p>
 
+
                     <p class="description">
                         {{ item.description }}
                     </p>
+
+
+                    {% if item.scheduled_employee %}
+
+                        <p>
+                            <strong>Responsável programado:</strong>
+                            {{ item.scheduled_employee }}
+                        </p>
+
+                    {% endif %}
+
+
+                    {% if item.planned_at %}
+
+                        <p>
+                            <strong>Atendimento previsto:</strong>
+                            {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
+                        </p>
+
+                    {% endif %}
+
+
+                    {% if item.executor_name %}
+
+                        <p>
+                            <strong>Executado por:</strong>
+                            {{ item.executor_name }}
+                        </p>
+
+                    {% endif %}
+
 
                     <div class="request-footer">
 
