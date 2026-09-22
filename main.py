@@ -554,6 +554,29 @@ def parse_datetime(value):
         return None
 
 
+def get_status_counts(db: Session):
+    """
+    Centraliza a contagem de solicitações por status,
+    usada no Dashboard e no badge da sidebar.
+    """
+
+    counts = {}
+
+    for key, status_value in (
+        ("pendente", "PENDENTE"),
+        ("agendada", "AGENDADA"),
+        ("atendimento", "EM ATENDIMENTO"),
+        ("concluida", "CONCLUÍDA"),
+    ):
+        counts[key] = (
+            db.query(MaintenanceRequest)
+            .filter(MaintenanceRequest.status == status_value)
+            .count()
+        )
+
+    return counts
+
+
 # =========================================================
 # USUÁRIOS INICIAIS
 # =========================================================
@@ -885,12 +908,20 @@ def my_requests(
         .all()
     )
 
+    counts = {
+        "pendente": sum(1 for r in rows if r.status == "PENDENTE"),
+        "agendada": sum(1 for r in rows if r.status == "AGENDADA"),
+        "atendimento": sum(1 for r in rows if r.status == "EM ATENDIMENTO"),
+        "concluida": sum(1 for r in rows if r.status == "CONCLUÍDA"),
+    }
+
     return templates.TemplateResponse(
         request=request,
         name="minhas_solicitacoes.html",
         context={
             "user": user,
             "rows": rows,
+            "counts": counts,
         },
     )
 
@@ -944,40 +975,7 @@ def dashboard(
         .all()
     )
 
-    counts = {
-        "pendente": (
-            db.query(MaintenanceRequest)
-            .filter(
-                MaintenanceRequest.status
-                == "PENDENTE"
-            )
-            .count()
-        ),
-        "agendada": (
-            db.query(MaintenanceRequest)
-            .filter(
-                MaintenanceRequest.status
-                == "AGENDADA"
-            )
-            .count()
-        ),
-        "atendimento": (
-            db.query(MaintenanceRequest)
-            .filter(
-                MaintenanceRequest.status
-                == "EM ATENDIMENTO"
-            )
-            .count()
-        ),
-        "concluida": (
-            db.query(MaintenanceRequest)
-            .filter(
-                MaintenanceRequest.status
-                == "CONCLUÍDA"
-            )
-            .count()
-        ),
-    }
+    counts = get_status_counts(db)
 
     return templates.TemplateResponse(
         request=request,
@@ -988,6 +986,141 @@ def dashboard(
             "counts": counts,
             "status": status,
             "priority": priority,
+        },
+    )
+
+
+# =========================================================
+# RELATÓRIOS
+# =========================================================
+
+@app.get(
+    "/relatorios",
+    response_class=HTMLResponse,
+)
+def relatorios(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user, redirect = require_login(
+        request,
+        db,
+    )
+
+    if redirect:
+        return redirect
+
+    require_role(
+        user,
+        ["manutencao", "adm"],
+    )
+
+    concluded = (
+        db.query(MaintenanceRequest)
+        .filter(MaintenanceRequest.status == "CONCLUÍDA")
+        .all()
+    )
+
+    # ---------------------------------------------------
+    # Atendimentos por funcionário
+    # ---------------------------------------------------
+
+    employee_stats = {}
+
+    for req in concluded:
+
+        name = req.executor_name or "Não informado"
+
+        if name not in employee_stats:
+            employee_stats[name] = {
+                "count": 0,
+                "total_hours": 0.0,
+            }
+
+        employee_stats[name]["count"] += 1
+
+        if req.started_at and req.finished_at:
+            hours = (
+                req.finished_at - req.started_at
+            ).total_seconds() / 3600
+
+            employee_stats[name]["total_hours"] += hours
+
+    employee_labels = sorted(
+        employee_stats.keys(),
+        key=lambda n: employee_stats[n]["count"],
+        reverse=True,
+    )
+
+    employee_counts = [
+        employee_stats[n]["count"] for n in employee_labels
+    ]
+
+    employee_avg_hours = [
+        round(
+            employee_stats[n]["total_hours"]
+            / employee_stats[n]["count"],
+            1,
+        )
+        if employee_stats[n]["count"]
+        else 0
+        for n in employee_labels
+    ]
+
+    # ---------------------------------------------------
+    # Tempo médio por prioridade (abertura -> conclusão)
+    # ---------------------------------------------------
+
+    priority_order = ["Baixa", "Média", "Alta", "Crítica"]
+
+    priority_stats = {
+        p: {"count": 0, "total_hours": 0.0}
+        for p in priority_order
+    }
+
+    for req in concluded:
+
+        p = req.priority if req.priority in priority_stats else "Média"
+
+        priority_stats[p]["count"] += 1
+
+        if req.created_at and req.finished_at:
+            hours = (
+                req.finished_at - req.created_at
+            ).total_seconds() / 3600
+
+            priority_stats[p]["total_hours"] += hours
+
+    priority_counts = [
+        priority_stats[p]["count"] for p in priority_order
+    ]
+
+    priority_avg_hours = [
+        round(
+            priority_stats[p]["total_hours"]
+            / priority_stats[p]["count"],
+            1,
+        )
+        if priority_stats[p]["count"]
+        else 0
+        for p in priority_order
+    ]
+
+    counts = get_status_counts(db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="relatorios.html",
+        context={
+            "user": user,
+            "counts": counts,
+            "total_concluded": len(concluded),
+            "employee_labels": employee_labels,
+            "employee_counts": employee_counts,
+            "employee_avg_hours": employee_avg_hours,
+            "priority_labels": priority_order,
+            "priority_counts": priority_counts,
+            "priority_avg_hours": priority_avg_hours,
         },
     )
 
@@ -1360,13 +1493,19 @@ def change_priority(
         f"/solicitacao/{request_id}",
         status_code=303,
     )
+
+
+# =========================================================
+# IMPRIMIR ORDEM DE SERVIÇO
+# =========================================================
+
 @app.get("/solicitacao/{request_id}/imprimir", response_class=HTMLResponse)
 def imprimir_ordem(
     request: Request,
     request_id: int,
     db: Session = Depends(get_db)
 ):
-    user = get_current_user(request, db)
+    user = current_user(request, db)
 
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -1377,20 +1516,16 @@ def imprimir_ordem(
             status_code=303
         )
 
-    item = (
-        db.query(MaintenanceRequest)
-        .filter(MaintenanceRequest.id == request_id)
-        .first()
-    )
+    item = db.get(MaintenanceRequest, request_id)
 
     if not item:
         return RedirectResponse("/painel", status_code=303)
 
     return templates.TemplateResponse(
-        "ordem_servico.html",
-        {
-            "request": request,
+        request=request,
+        name="ordem_servico.html",
+        context={
             "user": user,
-            "item": item
-        }
+            "item": item,
+        },
     )
