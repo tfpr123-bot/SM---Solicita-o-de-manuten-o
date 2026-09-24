@@ -775,6 +775,13 @@
                 {% endif %}
             </a>
 
+            {% if user.role == "adm" %}
+                <a href="/relatorios">
+                    <span class="menu-icon">📊</span>
+                    <span>Relatórios</span>
+                </a>
+            {% endif %}
+
         </nav>
 
         <div class="sidebar-user">
