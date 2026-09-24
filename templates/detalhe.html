@@ -693,6 +693,36 @@
     </div>
 
 
+    <!-- IMPRIMIR AGENDAMENTO -->
+    {% if user.role in ["manutencao", "adm"] and item.scheduled_employee %}
+
+    <div class="card">
+
+        <h2>🖨️ Agendamento</h2>
+
+        <p style="margin-top:0;color:#6b7280;">
+            Imprima esta ordem para acompanhar o serviço no local.
+            O colaborador poderá preencher as informações da execução
+            durante o atendimento.
+        </p>
+
+        <div class="form-actions">
+
+            <a
+                href="/solicitacao/{{ item.id }}/imprimir-agendamento"
+                target="_blank"
+                class="btn btn-primary"
+            >
+                🖨️ Imprimir Agendamento
+            </a>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
     <div class="card">
 
         <h2>🔧 Iniciar atendimento</h2>
