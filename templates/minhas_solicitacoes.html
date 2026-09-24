@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -29,18 +28,12 @@
             font-family: inherit;
         }
 
-        /* =========================
-           LAYOUT
-        ========================= */
-
         .app {
             display: flex;
             min-height: 100vh;
         }
 
-        /* =========================
-           SIDEBAR
-        ========================= */
+        /* SIDEBAR */
 
         .sidebar {
             width: 250px;
@@ -181,9 +174,7 @@
             color: #fff;
         }
 
-        /* =========================
-           MAIN
-        ========================= */
+        /* MAIN */
 
         .main {
             margin-left: 250px;
@@ -229,9 +220,7 @@
             padding: 28px 30px 40px;
         }
 
-        /* =========================
-           BOTÃO NOVA SOLICITAÇÃO
-        ========================= */
+        /* BOTÃO */
 
         .btn-new {
             display: inline-flex;
@@ -251,9 +240,7 @@
             background: #1d4ed8;
         }
 
-        /* =========================
-           WELCOME
-        ========================= */
+        /* WELCOME */
 
         .welcome {
             background: #fff;
@@ -282,9 +269,7 @@
             margin-top: 3px;
         }
 
-        /* =========================
-           STATS
-        ========================= */
+        /* STATS */
 
         .stats {
             display: grid;
@@ -365,9 +350,7 @@
             font-size: 11px;
         }
 
-        /* =========================
-           HISTÓRICO
-        ========================= */
+        /* HISTÓRICO */
 
         .requests {
             background: #fff;
@@ -405,9 +388,7 @@
             white-space: nowrap;
         }
 
-        /* =========================
-           LISTA
-        ========================= */
+        /* LISTA */
 
         .request-list {
             display: flex;
@@ -490,9 +471,7 @@
             vertical-align: middle;
         }
 
-        /* =========================
-           BADGES
-        ========================= */
+        /* BADGES */
 
         .status,
         .priority {
@@ -521,7 +500,7 @@
             color: #245eb5;
         }
 
-        .status-concluída {
+        .status-concluida {
             background: #e7f7ef;
             color: #23704b;
         }
@@ -551,9 +530,7 @@
             color: #26734d;
         }
 
-        /* =========================
-           EMPTY
-        ========================= */
+        /* EMPTY */
 
         .empty {
             padding: 60px 20px;
@@ -584,9 +561,7 @@
             margin-bottom: 18px;
         }
 
-        /* =========================
-           RESPONSIVO
-        ========================= */
+        /* RESPONSIVO */
 
         @media (max-width: 1000px) {
             .stats {
@@ -695,9 +670,7 @@
 
 <div class="app">
 
-    <!-- =========================
-         SIDEBAR
-    ========================== -->
+    <!-- SIDEBAR -->
 
     <aside class="sidebar">
 
@@ -728,7 +701,6 @@
 
             </a>
 
-
             <a href="/nova-solicitacao">
 
                 <span class="menu-icon">＋</span>
@@ -740,7 +712,6 @@
             </a>
 
         </nav>
-
 
         <div class="sidebar-user">
 
@@ -764,7 +735,6 @@
 
             </div>
 
-
             <a href="/logout" class="logout">
                 ↪ Sair do sistema
             </a>
@@ -774,9 +744,7 @@
     </aside>
 
 
-    <!-- =========================
-         MAIN
-    ========================== -->
+    <!-- MAIN -->
 
     <main class="main">
 
@@ -800,7 +768,6 @@
 
                 </div>
 
-
                 <a href="/nova-solicitacao" class="btn-new">
                     ＋ Nova Solicitação
                 </a>
@@ -811,7 +778,6 @@
 
 
         <section class="content">
-
 
             <!-- USUÁRIO -->
 
@@ -839,7 +805,6 @@
             <!-- INDICADORES -->
 
             <div class="stats">
-
 
                 <div class="stat-card pending">
 
@@ -940,7 +905,6 @@
 
                 </div>
 
-
             </div>
 
 
@@ -962,7 +926,6 @@
 
                     </div>
 
-
                     <div class="count-label">
 
                         {% if rows|length == 1 %}
@@ -982,13 +945,12 @@
 
                         {% for item in rows %}
 
-                            <a href="/os/{{ item.id }}" class="request-item">
+                            <!-- LINK CORRETO PARA A O.S. -->
 
+                            <a href="/solicitacao/{{ item.id }}" class="request-item">
 
                                 <div class="request-number">
-
                                     #{{ item.id }}
-
                                 </div>
 
 
@@ -1001,11 +963,37 @@
                                         </span>
 
 
-                                        {% set status_class = item.status|lower|replace(" ", "-") %}
+                                        {% if item.status == "PENDENTE" %}
 
-                                        <span class="status status-{{ status_class }}">
-                                            {{ item.status }}
-                                        </span>
+                                            <span class="status status-pendente">
+                                                PENDENTE
+                                            </span>
+
+                                        {% elif item.status == "AGENDADA" %}
+
+                                            <span class="status status-agendada">
+                                                AGENDADA
+                                            </span>
+
+                                        {% elif item.status == "EM ATENDIMENTO" %}
+
+                                            <span class="status status-em-atendimento">
+                                                EM ATENDIMENTO
+                                            </span>
+
+                                        {% elif item.status == "CONCLUÍDA" %}
+
+                                            <span class="status status-concluida">
+                                                CONCLUÍDA
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="status">
+                                                {{ item.status }}
+                                            </span>
+
+                                        {% endif %}
 
                                     </div>
 
@@ -1076,7 +1064,6 @@
 
                                 </div>
 
-
                             </a>
 
                         {% endfor %}
@@ -1084,7 +1071,6 @@
                     </div>
 
                 {% else %}
-
 
                     <!-- SEM SOLICITAÇÕES -->
 
@@ -1108,7 +1094,6 @@
 
                     </div>
 
-
                 {% endif %}
 
             </div>
@@ -1121,4 +1106,3 @@
 
 </body>
 </html>
-```
