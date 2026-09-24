@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Agendamento #{{ item.id }} - Manutenção
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #e5e7eb;
+            color: #111827;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 20px auto;
+            padding: 12mm;
+            background: #ffffff;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #111827;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .header-left {
+            flex: 1;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #4b5563;
+            margin: 0;
+        }
+
+        .os-number {
+            min-width: 100px;
+            text-align: center;
+            border-left: 1px solid #9ca3af;
+            padding-left: 15px;
+        }
+
+        .os-number span {
+            display: block;
+            font-size: 10px;
+            color: #6b7280;
+            margin-bottom: 3px;
+        }
+
+        .os-number strong {
+            display: block;
+            font-size: 22px;
+        }
+
+        .section {
+            border: 1px solid #9ca3af;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+        }
+
+        .section-title {
+            background: #f3f4f6;
+            border-bottom: 1px solid #9ca3af;
+            padding: 7px 9px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .section-content {
+            padding: 9px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+
+        .field {
+            min-height: 43px;
+            border-right: 1px solid #d1d5db;
+            border-bottom: 1px solid #d1d5db;
+            padding: 7px;
+        }
+
+        .field:nth-child(2n) {
+            border-right: none;
+        }
+
+        .field:nth-last-child(-n+2) {
+            border-bottom: none;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 9px;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .field-value {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .priority {
+            display: inline-block;
+            padding: 3px 8px;
+            border: 1px solid #9ca3af;
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        .description-box {
+            min-height: 65px;
+            padding: 9px;
+            line-height: 1.5;
+        }
+
+        .schedule-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-top: 1px solid #d1d5db;
+        }
+
+        .schedule-field {
+            padding: 9px;
+            min-height: 55px;
+            border-right: 1px solid #d1d5db;
+        }
+
+        .schedule-field:last-child {
+            border-right: none;
+        }
+
+        .schedule-note {
+            border-top: 1px solid #d1d5db;
+            padding: 9px;
+            min-height: 55px;
+        }
+
+        .writing-area {
+            padding: 8px;
+        }
+
+        .writing-label {
+            font-weight: bold;
+            font-size: 10px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .blank-area {
+            border: 1px solid #9ca3af;
+            min-height: 75px;
+            background:
+                repeating-linear-gradient(
+                    to bottom,
+                    #ffffff 0,
+                    #ffffff 23px,
+                    #d1d5db 24px
+                );
+        }
+
+        .blank-area.large {
+            min-height: 105px;
+        }
+
+        .blank-area.medium {
+            min-height: 80px;
+        }
+
+        .blank-area.small {
+            min-height: 60px;
+        }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .two-columns .section {
+            margin-bottom: 10px;
+        }
+
+        .signature-section {
+            margin-top: 18px;
+            page-break-inside: avoid;
+        }
+
+        .signatures {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 35px;
+            padding: 15px 10px 5px 10px;
+        }
+
+        .signature {
+            text-align: center;
+            padding-top: 35px;
+        }
+
+        .signature-line {
+            border-top: 1px solid #111827;
+            padding-top: 6px;
+            font-size: 10px;
+        }
+
+        .signature-name {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+
+        .signature-role {
+            color: #6b7280;
+            font-size: 9px;
+        }
+
+        .footer {
+            margin-top: 12px;
+            border-top: 1px solid #9ca3af;
+            padding-top: 7px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #6b7280;
+        }
+
+        .print-actions {
+            width: 210mm;
+            margin: 15px auto;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 6px;
+            padding: 11px 18px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-print {
+            background: #111827;
+            color: #ffffff;
+        }
+
+        .btn-close {
+            background: #d1d5db;
+            color: #111827;
+        }
+
+        @media print {
+
+            body {
+                background: #ffffff;
+            }
+
+            .page {
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+            }
+
+            .print-actions {
+                display: none;
+            }
+
+            .section {
+                page-break-inside: avoid;
+            }
+
+            .blank-area,
+            .blank-area.large,
+            .blank-area.medium,
+            .blank-area.small {
+                background:
+                    repeating-linear-gradient(
+                        to bottom,
+                        #ffffff 0,
+                        #ffffff 23px,
+                        #d1d5db 24px
+                    );
+            }
+
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="page">
+
+    <!-- CABEÇALHO -->
+
+    <div class="header">
+
+        <div class="header-left">
+
+            <h1 class="title">
+                ORDEM DE SERVIÇO – AGENDAMENTO
+            </h1>
+
+            <p class="subtitle">
+                Solicitação de manutenção programada
+            </p>
+
+        </div>
+
+        <div class="os-number">
+
+            <span>Nº DA SOLICITAÇÃO</span>
+
+            <strong>
+                #{{ item.id }}
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- DADOS DA SOLICITAÇÃO -->
+
+    <div class="section">
+
+        <div class="section-title">
+            Dados da Solicitação
+        </div>
+
+        <div class="grid">
+
+            <div class="field">
+
+                <span class="field-label">
+                    Setor
+                </span>
+
+                <div class="field-value">
+                    {{ item.sector or "-" }}
+                </div>
+
+            </div>
+
+
+            <div class="field">
+
+                <span class="field-label">
+                    Equipamento
+                </span>
+
+                <div class="field-value">
+                    {{ item.equipment or "-" }}
+                </div>
+
+            </div>
+
+
+            <div class="field">
+
+                <span class="field-label">
+                    Prioridade
+                </span>
+
+                <div class="field-value">
+
+                    <span class="priority">
+                        {{ item.priority or "-" }}
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="field">
+
+                <span class="field-label">
+                    Solicitante
+                </span>
+
+                <div class="field-value">
+
+                    {% if item.requester %}
+                        {{ item.requester.username }}
+                    {% else %}
+                        -
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- PROBLEMA -->
+
+    <div class="section">
+
+        <div class="section-title">
+            Problema / Solicitação
+        </div>
+
+        <div class="description-box">
+
+            {{ item.description or "-" }}
+
+        </div>
+
+    </div>
+
+
+    <!-- AGENDAMENTO -->
+
+    <div class="section">
+
+        <div class="section-title">
+            Dados do Agendamento
+        </div>
+
+        <div class="schedule-info">
+
+            <div class="schedule-field">
+
+                <span class="field-label">
+                    Data e horário programado
+                </span>
+
+                <div class="field-value">
+
+                    {% if item.planned_at %}
+                        {{ item.planned_at.strftime("%d/%m/%Y %H:%M") }}
+                    {% else %}
+                        -
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+            <div class="schedule-field">
+
+                <span class="field-label">
+                    Funcionário responsável
+                </span>
+
+                <div class="field-value">
+
+                    {{ item.scheduled_employee or "-" }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="schedule-note">
+
+            <span class="field-label">
+                Observação do agendamento
+            </span>
+
+            <div class="field-value">
+
+                {{ item.scheduling_note or "-" }}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- SERVIÇO REALIZADO -->
+
+    <div class="section">
+
+        <div class="section-title">
+            Execução do Serviço
+        </div>
+
+        <div class="writing-area">
+
+            <div class="writing-label">
+                Serviço realizado
+            </div>
+
+            <div class="blank-area large"></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DIAGNÓSTICO E CAUSA -->
+
+    <div class="section">
+
+        <div class="section-title">
+            Diagnóstico / Causa
+        </div>
+
+        <div class="writing-area">
+
+            <div class="blank-area medium"></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- PEÇAS E OBSERVAÇÕES -->
+
+    <div class="two-columns">
+
+        <div class="section">
+
+            <div class="section-title">
+                Peças / Materiais
+            </div>
+
+            <div class="writing-area">
+
+                <div class="blank-area small"></div>
+
+            </div>
+
+        </div>
+
+
+        <div class="section">
+
+            <div class="section-title">
+                Observações
+            </div>
+
+            <div class="writing-area">
+
+                <div class="blank-area small"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ASSINATURAS -->
+
+    <div class="section signature-section">
+
+        <div class="section-title">
+            Responsáveis
+        </div>
+
+        <div class="signatures">
+
+            <div class="signature">
+
+                <div class="signature-line">
+
+                    <div class="signature-name">
+                        {{ item.scheduled_employee or "Funcionário responsável" }}
+                    </div>
+
+                    <div class="signature-role">
+                        Executor do serviço
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="signature">
+
+                <div class="signature-line">
+
+                    <div class="signature-name">
+                        __________________________________
+                    </div>
+
+                    <div class="signature-role">
+                        Líder da Manutenção
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- RODAPÉ -->
+
+    <div class="footer">
+
+        <span>
+            Sistema de Solicitação de Manutenção
+        </span>
+
+        <span>
+            Documento de acompanhamento do serviço
+        </span>
+
+    </div>
+
+</div>
+
+
+<!-- BOTÕES -->
+
+<div class="print-actions">
+
+    <button
+        type="button"
+        class="btn btn-print"
+        onclick="window.print()"
+    >
+        🖨️ Imprimir
+    </button>
+
+
+    <button
+        type="button"
+        class="btn btn-close"
+        onclick="window.close()"
+    >
+        Fechar
+    </button>
+
+</div>
+
+
+</body>
+</html>
