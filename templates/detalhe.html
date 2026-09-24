@@ -4,692 +4,1127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>OS #{{ item.id }} | Manutenção</title>
+    <title>Solicitação #{{ item.id }} - Manutenção</title>
 
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f3f5f7;
+            color: #202124;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .container {
+            width: min(1100px, 94%);
+            margin: 30px auto;
+        }
+
+        .topbar {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.06);
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .topbar p {
+            margin: 5px 0 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .back {
+            padding: 10px 15px;
+            border-radius: 9px;
+            background: #eef1f4;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .back:hover {
+            background: #e2e6ea;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.06);
+        }
+
+        .card h2 {
+            margin: 0 0 18px;
+            font-size: 19px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .field {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 13px;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .value {
+            font-size: 15px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .status-pendente {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-agendada {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .status-em-atendimento {
+            background: #ede9fe;
+            color: #6d28d9;
+        }
+
+        .status-concluida {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .priority {
+            display: inline-block;
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .priority-baixa {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .priority-media {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .priority-alta {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+
+        .priority-critica {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .form-group.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #374151;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 9px;
+            padding: 11px 12px;
+            font-family: inherit;
+            font-size: 14px;
+            background: #fff;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 9px;
+            padding: 11px 17px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-success {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+        }
+
+        .btn-warning {
+            background: #d97706;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #b45309;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-large {
+            width: 100%;
+            min-height: 52px;
+            font-size: 16px;
+        }
+
+        .form-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .alert {
+            border-radius: 12px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            border: 1px solid;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #92400e;
+        }
+
+        .alert strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .timeline-item {
+            border-left: 3px solid #dbe3ea;
+            padding: 8px 0 8px 15px;
+        }
+
+        .timeline-action {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .timeline-date {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .attachment {
+            border: 1px solid #e5e7eb;
+            border-radius: 9px;
+            padding: 10px 13px;
+            background: #f8fafc;
+            font-size: 13px;
+        }
+
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .section-title h2 {
+            margin: 0;
+        }
+
+        .danger-text {
+            color: #b91c1c;
+        }
+
+        @media (max-width: 700px) {
+            .grid,
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .field.full,
+            .form-group.full {
+                grid-column: auto;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .back {
+                text-align: center;
+            }
+
+            .container {
+                width: 94%;
+                margin: 15px auto;
+            }
+        }
+    </style>
 </head>
 
-<body class="detail-page">
+<body>
 
-<div class="detail-container">
+<div class="container">
 
-    <!-- CABEÇALHO -->
-    <header class="detail-header">
-
-        <div class="detail-title">
-
-            <div class="detail-kicker">
-                ORDEM DE SERVIÇO
-            </div>
-
+    <!-- TOPO -->
+    <div class="topbar">
+        <div>
             <h1>Solicitação #{{ item.id }}</h1>
-
-            <p>
-                {{ item.sector }}
-                <span>•</span>
-                {{ item.equipment }}
-            </p>
-
+            <p>Gestão de Serviços de Manutenção</p>
         </div>
 
-        <div class="detail-actions">
+        {% if user.role == "lider" %}
+            <a href="/minhas-solicitacoes" class="back">
+                ← Minhas solicitações
+            </a>
+        {% else %}
+            <a href="/painel" class="back">
+                ← Voltar ao painel
+            </a>
+        {% endif %}
+    </div>
 
-            {% if user.role == "lider" %}
 
-                <a href="/minhas-solicitacoes"
-                   class="btn btn-secondary btn-back">
-                    ← Voltar
-                </a>
+    <!-- INFORMAÇÕES PRINCIPAIS -->
+    <div class="card">
 
-            {% elif user.role == "adm" %}
+        <div class="section-title">
+            <h2>Informações da solicitação</h2>
 
-                <a href="/painel"
-                   class="btn btn-secondary btn-back">
-                    ← Dashboard
-                </a>
+            {% set status_class = "status-pendente" %}
 
-                <a href="/solicitacao/{{ item.id }}/imprimir"
-                   target="_blank"
-                   class="btn btn-dark">
-                    🖨 Imprimir OS
-                </a>
-
-            {% else %}
-
-                <a href="/painel"
-                   class="btn btn-secondary btn-back">
-                    ← Voltar
-                </a>
-
+            {% if item.status == "AGENDADA" %}
+                {% set status_class = "status-agendada" %}
+            {% elif item.status == "EM ATENDIMENTO" %}
+                {% set status_class = "status-em-atendimento" %}
+            {% elif item.status == "CONCLUÍDA" %}
+                {% set status_class = "status-concluida" %}
             {% endif %}
 
-        </div>
-
-    </header>
-
-
-    <!-- STATUS -->
-    <section class="detail-status-card">
-
-        <div>
-
-            <span class="detail-label">
-                STATUS ATUAL
-            </span>
-
-            <span class="status status-large {{ item.status|lower|replace(' ', '-') }}">
+            <span class="status {{ status_class }}">
                 {{ item.status }}
             </span>
-
         </div>
 
-        <div>
+        <div class="grid">
 
-            <span class="detail-label">
-                PRIORIDADE
-            </span>
+            <div class="field">
+                <div class="label">Setor</div>
+                <div class="value">{{ item.sector }}</div>
+            </div>
 
-            <strong class="priority-value priority-{{ item.priority|lower|replace('í','i') }}">
-                {{ item.priority }}
-            </strong>
+            <div class="field">
+                <div class="label">Equipamento</div>
+                <div class="value">{{ item.equipment }}</div>
+            </div>
 
-        </div>
+            <div class="field">
+                <div class="label">Solicitante</div>
+                <div class="value">{{ item.requester.name }}</div>
+            </div>
 
-        {% if item.created_at %}
-
-        <div>
-
-            <span class="detail-label">
-                ABERTA EM
-            </span>
-
-            <strong>
-                {{ item.created_at.strftime('%d/%m/%Y %H:%M') }}
-            </strong>
-
-        </div>
-
-        {% endif %}
-
-    </section>
-
-
-    <!-- DADOS DA SOLICITAÇÃO -->
-    <section class="detail-card">
-
-        <div class="card-heading">
-
-            <div>
-                <span class="card-icon">📋</span>
-
-                <div>
-                    <h2>Dados da solicitação</h2>
-                    <p>Informações registradas pelo solicitante.</p>
+            <div class="field">
+                <div class="label">Data da solicitação</div>
+                <div class="value">
+                    {% if item.created_at %}
+                        {{ item.created_at.strftime("%d/%m/%Y %H:%M") }}
+                    {% else %}
+                        -
+                    {% endif %}
                 </div>
             </div>
 
-        </div>
+            <div class="field">
+                <div class="label">Prioridade</div>
 
-        <div class="info-grid">
-
-            <div class="info-item">
-                <span>Solicitante</span>
-                <strong>{{ item.requester.name }}</strong>
+                {% if item.priority == "Baixa" %}
+                    <span class="priority priority-baixa">Baixa</span>
+                {% elif item.priority == "Média" %}
+                    <span class="priority priority-media">Média</span>
+                {% elif item.priority == "Alta" %}
+                    <span class="priority priority-alta">Alta</span>
+                {% else %}
+                    <span class="priority priority-critica">Crítica</span>
+                {% endif %}
             </div>
 
-            <div class="info-item">
-                <span>Setor</span>
-                <strong>{{ item.sector }}</strong>
+            <div class="field">
+                <div class="label">Responsável pelo atendimento</div>
+                <div class="value">
+                    {% if item.executor_name %}
+                        {{ item.executor_name }}
+                    {% elif item.scheduled_employee %}
+                        {{ item.scheduled_employee }}
+                    {% else %}
+                        Não definido
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="info-item">
-                <span>Equipamento / Local</span>
-                <strong>{{ item.equipment }}</strong>
-            </div>
-
-            <div class="info-item">
-                <span>Prioridade</span>
-                <strong>{{ item.priority }}</strong>
-            </div>
-
-        </div>
-
-        <div class="description-section">
-
-            <span>Problema informado</span>
-
-            <div class="description-box">
-                {{ item.description }}
+            <div class="field full">
+                <div class="label">Descrição do problema</div>
+                <div class="value">{{ item.description }}</div>
             </div>
 
         </div>
-
-    </section>
+    </div>
 
 
     <!-- ANEXOS -->
     {% if item.attachments %}
+    <div class="card">
 
-    <section class="detail-card">
-
-        <div class="card-heading">
-
-            <div>
-                <span class="card-icon">📎</span>
-
-                <div>
-                    <h2>Fotos e vídeos</h2>
-                    <p>Arquivos anexados à solicitação.</p>
-                </div>
-            </div>
-
-        </div>
+        <h2>📎 Anexos</h2>
 
         <div class="attachments">
 
-            {% for file in item.attachments %}
+            {% for attachment in item.attachments %}
 
-                {% set ext = file.filename.lower().split('.')[-1] %}
-
-                {% if ext in ['jpg', 'jpeg', 'png', 'webp'] %}
-
-                    <div class="attachment">
-
-                        <img src="/uploads/{{ file.filename }}"
-                             alt="{{ file.original_name }}">
-
-                        <span>
-                            {{ file.original_name }}
-                        </span>
-
-                    </div>
-
-                {% elif ext in ['mp4', 'mov', 'webm'] %}
-
-                    <div class="attachment">
-
-                        <video controls>
-                            <source src="/uploads/{{ file.filename }}">
-                        </video>
-
-                        <span>
-                            {{ file.original_name }}
-                        </span>
-
-                    </div>
-
-                {% endif %}
+                <a
+                    href="/uploads/{{ attachment.filename }}"
+                    target="_blank"
+                    class="attachment"
+                >
+                    📄 {{ attachment.original_name }}
+                </a>
 
             {% endfor %}
 
         </div>
 
-    </section>
-
+    </div>
     {% endif %}
 
 
-    <!-- =====================================================
-         ÁREA ADM / MANUTENÇÃO
-    ====================================================== -->
+    <!-- ALTERAR PRIORIDADE -->
+    {% if user.role in ["manutencao", "adm"] and item.status != "CONCLUÍDA" %}
 
-    {% if user.role in ["manutencao", "adm"] %}
+    <div class="card">
 
+        <h2>Prioridade</h2>
 
-        <!-- AGENDAMENTO -->
-        {% if item.status == "PENDENTE" %}
+        <form method="post"
+              action="/solicitacao/{{ item.id }}/prioridade">
 
-        <section class="detail-card action-card">
+            <div class="form-grid">
 
-            <div class="card-heading">
+                <div class="form-group">
 
-                <div>
-                    <span class="card-icon">📅</span>
+                    <label for="priority">
+                        Alterar prioridade
+                    </label>
 
-                    <div>
-                        <h2>Agendar atendimento</h2>
-                        <p>
-                            Defina o responsável e a data prevista para execução.
-                        </p>
-                    </div>
+                    <select name="priority" id="priority">
+
+                        <option value="Baixa"
+                            {% if item.priority == "Baixa" %}selected{% endif %}>
+                            Baixa
+                        </option>
+
+                        <option value="Média"
+                            {% if item.priority == "Média" %}selected{% endif %}>
+                            Média
+                        </option>
+
+                        <option value="Alta"
+                            {% if item.priority == "Alta" %}selected{% endif %}>
+                            Alta
+                        </option>
+
+                        <option value="Crítica"
+                            {% if item.priority == "Crítica" %}selected{% endif %}>
+                            Crítica
+                        </option>
+
+                    </select>
+
                 </div>
 
             </div>
 
-            <form method="post"
-                  action="/solicitacao/{{ item.id }}/agendar"
-                  class="detail-form">
+            <div class="form-actions">
 
-                <div class="form-grid">
+                <button type="submit" class="btn btn-warning">
+                    ⚠️ Atualizar prioridade
+                </button>
 
-                    <div class="form-group">
+            </div>
 
-                        <label>
-                            Funcionário responsável
-                        </label>
+        </form>
 
-                        <select name="scheduled_employee" required>
+    </div>
 
-                            <option value="">
-                                Selecione o funcionário
-                            </option>
+    {% endif %}
 
-                            {% for employee in maintenance_employees %}
+
+    <!-- AGENDAMENTO -->
+    {% if user.role in ["manutencao", "adm"] and item.status == "PENDENTE" %}
+
+    <div class="card">
+
+        <h2>📅 Agendar atendimento</h2>
+
+        <form
+            method="post"
+            action="/solicitacao/{{ item.id }}/agendar"
+        >
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label for="scheduled_employee">
+                        Funcionário responsável
+                    </label>
+
+                    <select
+                        name="scheduled_employee"
+                        id="scheduled_employee"
+                        required
+                    >
+
+                        <option value="">
+                            Selecione o funcionário
+                        </option>
+
+                        {% for employee in maintenance_employees %}
 
                             <option value="{{ employee }}">
                                 {{ employee }}
                             </option>
 
-                            {% endfor %}
+                        {% endfor %}
 
-                        </select>
-
-                    </div>
-
-                    <div class="form-group">
-
-                        <label>
-                            Data e horário previstos
-                        </label>
-
-                        <input type="datetime-local"
-                               name="planned_at"
-                               required>
-
-                    </div>
+                    </select>
 
                 </div>
 
+
                 <div class="form-group">
 
-                    <label>
+                    <label for="planned_at">
+                        Data e horário
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        name="planned_at"
+                        id="planned_at"
+                        value="{{ now_datetime }}"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group full">
+
+                    <label for="scheduling_note">
                         Observação do agendamento
                     </label>
 
-                    <textarea name="scheduling_note"
-                              rows="3"
-                              placeholder="Ex.: verificar equipamento antes do início da produção."></textarea>
+                    <textarea
+                        name="scheduling_note"
+                        id="scheduling_note"
+                        placeholder="Ex.: Atendimento programado para parada do equipamento..."
+                    ></textarea>
 
-                </div>
-
-                <div class="form-actions">
-
-                    <button type="submit"
-                            class="btn btn-primary btn-large">
-                        📅 Agendar Atendimento
-                    </button>
-
-                </div>
-
-            </form>
-
-        </section>
-
-        {% endif %}
-
-
-        <!-- AGENDAMENTO REALIZADO -->
-        {% if item.status == "AGENDADA" %}
-
-        <section class="detail-card scheduled-card">
-
-            <div class="card-heading">
-
-                <div>
-                    <span class="card-icon">📅</span>
-
-                    <div>
-                        <h2>Atendimento agendado</h2>
-                        <p>Programação atual da manutenção.</p>
-                    </div>
                 </div>
 
             </div>
 
-            <div class="info-grid">
 
-                {% if item.scheduled_employee %}
+            <div class="form-actions">
 
-                <div class="info-item">
-                    <span>Funcionário programado</span>
-                    <strong>{{ item.scheduled_employee }}</strong>
-                </div>
-
-                {% endif %}
-
-                {% if item.planned_at %}
-
-                <div class="info-item">
-                    <span>Data prevista</span>
-                    <strong>
-                        {{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}
-                    </strong>
-                </div>
-
-                {% endif %}
-
-                {% if item.assigned_to %}
-
-                <div class="info-item">
-                    <span>Agendado por</span>
-                    <strong>{{ item.assigned_to.name }}</strong>
-                </div>
-
-                {% endif %}
-
-            </div>
-
-            {% if item.scheduling_note %}
-
-            <div class="note-box">
-
-                <strong>Observação</strong>
-
-                <p>{{ item.scheduling_note }}</p>
-
-            </div>
-
-            {% endif %}
-
-        </section>
-
-        {% endif %}
-
-
-        <!-- PRIORIDADE -->
-        <section class="detail-card">
-
-            <div class="card-heading">
-
-                <div>
-                    <span class="card-icon">⚡</span>
-
-                    <div>
-                        <h2>Prioridade</h2>
-                        <p>Altere a prioridade desta solicitação.</p>
-                    </div>
-                </div>
-
-            </div>
-
-            <form method="post"
-                  action="/solicitacao/{{ item.id }}/prioridade"
-                  class="priority-form">
-
-                <select name="priority">
-
-                    <option value="Baixa"
-                        {% if item.priority == "Baixa" %}selected{% endif %}>
-                        Baixa
-                    </option>
-
-                    <option value="Média"
-                        {% if item.priority == "Média" %}selected{% endif %}>
-                        Média
-                    </option>
-
-                    <option value="Alta"
-                        {% if item.priority == "Alta" %}selected{% endif %}>
-                        Alta
-                    </option>
-
-                    <option value="Crítica"
-                        {% if item.priority == "Crítica" %}selected{% endif %}>
-                        Crítica
-                    </option>
-
-                </select>
-
-                <button type="submit"
-                        class="btn btn-warning">
-                    ⚡ Alterar Prioridade
+                <button type="submit" class="btn btn-primary">
+                    📅 Confirmar agendamento
                 </button>
 
-            </form>
-
-        </section>
-
-
-        <!-- REGISTRO DA MANUTENÇÃO -->
-        {% if item.status == "AGENDADA" or item.status == "EM ATENDIMENTO" %}
-
-        <section class="detail-card execution-card">
-
-            <div class="card-heading">
-
-                <div>
-                    <span class="card-icon">🔧</span>
-
-                    <div>
-                        <h2>Registro da manutenção</h2>
-                        <p>
-                            Registre a execução e os resultados do serviço.
-                        </p>
-                    </div>
-                </div>
-
             </div>
 
-            <form method="post"
-                  action="/solicitacao/{{ item.id }}/concluir"
-                  class="detail-form">
+        </form>
 
-                <div class="form-grid">
+    </div>
 
-                    <div class="form-group">
+    {% endif %}
 
-                        <label>
-                            Funcionário que realizou o serviço
-                        </label>
 
-                        <select name="executor_name" required>
+    <!-- AGENDAMENTO REALIZADO -->
+    {% if item.status == "AGENDADA" %}
 
-                            <option value="">
-                                Selecione o funcionário
-                            </option>
+    <div class="alert alert-info">
 
-                            {% for employee in maintenance_employees %}
+        <strong>📅 Atendimento agendado</strong>
 
-                            <option value="{{ employee }}"
-                                {% if item.executor_name == employee %}
+        {% if item.scheduled_employee %}
+            Funcionário: <strong>{{ item.scheduled_employee }}</strong>
+        {% endif %}
+
+        {% if item.planned_at %}
+            <br>
+            Data prevista:
+            <strong>
+                {{ item.planned_at.strftime("%d/%m/%Y %H:%M") }}
+            </strong>
+        {% endif %}
+
+        {% if item.scheduling_note %}
+            <br><br>
+            Observação:
+            {{ item.scheduling_note }}
+        {% endif %}
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>🔧 Iniciar atendimento</h2>
+
+        <p style="margin-top:0;color:#6b7280;">
+            Ao iniciar o atendimento, o sistema registrará automaticamente
+            a data e o horário de início da execução.
+        </p>
+
+        <form
+            method="post"
+            action="/solicitacao/{{ item.id }}/assumir"
+        >
+
+            <button
+                type="submit"
+                class="btn btn-primary btn-large"
+            >
+                🔧 Iniciar Atendimento
+            </button>
+
+        </form>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- EM ATENDIMENTO -->
+    {% if item.status == "EM ATENDIMENTO" %}
+
+    <div class="alert alert-warning">
+
+        <strong>🔧 Atendimento em andamento</strong>
+
+        O serviço foi iniciado.
+
+        {% if item.started_at %}
+            <br>
+            Início registrado em:
+            <strong>
+                {{ item.started_at.strftime("%d/%m/%Y %H:%M") }}
+            </strong>
+        {% endif %}
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>✅ Concluir atendimento</h2>
+
+        <form
+            method="post"
+            action="/solicitacao/{{ item.id }}/concluir"
+        >
+
+            <div class="form-grid">
+
+
+                <!-- EXECUTOR -->
+                <div class="form-group">
+
+                    <label for="executor_name">
+                        Funcionário executor
+                    </label>
+
+                    <select
+                        name="executor_name"
+                        id="executor_name"
+                        required
+                    >
+
+                        <option value="">
+                            Selecione o funcionário
+                        </option>
+
+                        {% for employee in maintenance_employees %}
+
+                            <option
+                                value="{{ employee }}"
+                                {% if item.scheduled_employee == employee %}
                                     selected
-                                {% endif %}>
+                                {% endif %}
+                            >
                                 {{ employee }}
                             </option>
 
-                            {% endfor %}
+                        {% endfor %}
 
-                        </select>
-
-                    </div>
-
-                    <div></div>
-
-                    <div class="form-group">
-
-                        <label>Início real</label>
-
-                        <input type="datetime-local"
-                               name="started_at"
-                               value="{% if item.started_at %}{{ item.started_at.strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ now_datetime }}{% endif %}"
-                               required>
-
-                    </div>
-
-                    <div class="form-group">
-
-                        <label>Término real</label>
-
-                        <input type="datetime-local"
-                               name="finished_at"
-                               value="{% if item.finished_at %}{{ item.finished_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
-                               required>
-
-                    </div>
+                    </select>
 
                 </div>
 
+
+                <!-- INÍCIO -->
                 <div class="form-group">
 
-                    <label>Diagnóstico</label>
+                    <label for="started_at">
+                        Início da execução
+                    </label>
 
-                    <textarea name="diagnosis"
-                              rows="3"
-                              placeholder="O que foi identificado?">{{ item.diagnosis or "" }}</textarea>
+                    <input
+                        type="datetime-local"
+                        name="started_at"
+                        id="started_at"
+                        value="{% if item.started_at %}{{ item.started_at.strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ now_datetime }}{% endif %}"
+                        required
+                    >
 
                 </div>
 
+
+                <!-- TÉRMINO -->
                 <div class="form-group">
 
-                    <label>Causa</label>
+                    <label for="finished_at">
+                        Término da execução
+                    </label>
 
-                    <textarea name="cause"
-                              rows="3"
-                              placeholder="Qual foi a causa do problema?">{{ item.cause or "" }}</textarea>
-
-                </div>
-
-                <div class="form-group">
-
-                    <label>Serviço realizado</label>
-
-                    <textarea name="service_done"
-                              rows="4"
-                              placeholder="O que foi feito para solucionar?">{{ item.service_done or "" }}</textarea>
+                    <input
+                        type="datetime-local"
+                        name="finished_at"
+                        id="finished_at"
+                        value="{{ now_datetime }}"
+                        required
+                    >
 
                 </div>
 
-                <div class="form-group">
 
-                    <label>Peças / Materiais utilizados</label>
+                <!-- DIAGNÓSTICO -->
+                <div class="form-group full">
 
-                    <textarea name="parts_used"
-                              rows="3"
-                              placeholder="Informe peças ou materiais utilizados.">{{ item.parts_used or "" }}</textarea>
+                    <label for="diagnosis">
+                        Diagnóstico
+                    </label>
 
-                </div>
-
-                <div class="form-group">
-
-                    <label>Observações</label>
-
-                    <textarea name="observations"
-                              rows="3"
-                              placeholder="Outras informações importantes.">{{ item.observations or "" }}</textarea>
+                    <textarea
+                        name="diagnosis"
+                        id="diagnosis"
+                        placeholder="Informe o diagnóstico encontrado..."
+                    >{{ item.diagnosis or "" }}</textarea>
 
                 </div>
 
-                <div class="form-actions">
 
-                    <button type="submit"
-                            class="btn btn-success btn-large">
-                        ✓ Concluir Solicitação
-                    </button>
+                <!-- CAUSA -->
+                <div class="form-group full">
+
+                    <label for="cause">
+                        Causa identificada
+                    </label>
+
+                    <textarea
+                        name="cause"
+                        id="cause"
+                        placeholder="Informe a causa do problema..."
+                    >{{ item.cause or "" }}</textarea>
 
                 </div>
 
-            </form>
 
-        </section>
+                <!-- SERVIÇO -->
+                <div class="form-group full">
 
+                    <label for="service_done">
+                        Serviço realizado
+                    </label>
+
+                    <textarea
+                        name="service_done"
+                        id="service_done"
+                        placeholder="Descreva o serviço realizado..."
+                        required
+                    >{{ item.service_done or "" }}</textarea>
+
+                </div>
+
+
+                <!-- PEÇAS -->
+                <div class="form-group full">
+
+                    <label for="parts_used">
+                        Peças / materiais utilizados
+                    </label>
+
+                    <textarea
+                        name="parts_used"
+                        id="parts_used"
+                        placeholder="Informe as peças ou materiais utilizados..."
+                    >{{ item.parts_used or "" }}</textarea>
+
+                </div>
+
+
+                <!-- OBSERVAÇÕES -->
+                <div class="form-group full">
+
+                    <label for="observations">
+                        Observações finais
+                    </label>
+
+                    <textarea
+                        name="observations"
+                        id="observations"
+                        placeholder="Outras informações importantes..."
+                    >{{ item.observations or "" }}</textarea>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-success btn-large"
+                >
+                    ✅ Concluir Ordem de Serviço
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- CONCLUÍDA -->
+    {% if item.status == "CONCLUÍDA" %}
+
+    <div class="alert alert-success">
+
+        <strong>✅ Ordem de serviço concluída</strong>
+
+        O atendimento desta solicitação foi encerrado.
+
+        {% if item.finished_at %}
+            <br>
+            Finalizado em:
+            <strong>
+                {{ item.finished_at.strftime("%d/%m/%Y %H:%M") }}
+            </strong>
         {% endif %}
 
+    </div>
 
-        <!-- CONCLUÍDA -->
-        {% if item.status == "CONCLUÍDA" %}
 
-        <section class="detail-card completed-card">
+    <div class="card">
 
-            <div class="card-heading">
+        <h2>📋 Resultado do atendimento</h2>
 
-                <div>
-                    <span class="card-icon">✓</span>
+        <div class="grid">
 
-                    <div>
-                        <h2>Manutenção realizada</h2>
-                        <p>Registro final da execução do serviço.</p>
-                    </div>
+
+            <div class="field">
+
+                <div class="label">
+                    Funcionário executor
+                </div>
+
+                <div class="value">
+                    {{ item.executor_name or "Não informado" }}
                 </div>
 
             </div>
 
-            <div class="info-grid">
 
-                {% if item.scheduled_employee %}
-                <div class="info-item">
-                    <span>Funcionário programado</span>
-                    <strong>{{ item.scheduled_employee }}</strong>
+            <div class="field">
+
+                <div class="label">
+                    Início
                 </div>
-                {% endif %}
 
-                {% if item.executor_name %}
-                <div class="info-item">
-                    <span>Funcionário que realizou</span>
-                    <strong>{{ item.executor_name }}</strong>
+                <div class="value">
+
+                    {% if item.started_at %}
+                        {{ item.started_at.strftime("%d/%m/%Y %H:%M") }}
+                    {% else %}
+                        -
+                    {% endif %}
+
                 </div>
-                {% endif %}
 
-                {% if item.planned_at %}
-                <div class="info-item">
-                    <span>Atendimento previsto</span>
-                    <strong>{{ item.planned_at.strftime('%d/%m/%Y %H:%M') }}</strong>
+            </div>
+
+
+            <div class="field">
+
+                <div class="label">
+                    Término
                 </div>
-                {% endif %}
 
-                {% if item.started_at %}
-                <div class="info-item">
-                    <span>Início real</span>
-                    <strong>{{ item.started_at.strftime('%d/%m/%Y %H:%M') }}</strong>
+                <div class="value">
+
+                    {% if item.finished_at %}
+                        {{ item.finished_at.strftime("%d/%m/%Y %H:%M") }}
+                    {% else %}
+                        -
+                    {% endif %}
+
                 </div>
-                {% endif %}
 
-                {% if item.finished_at %}
-                <div class="info-item">
-                    <span>Término real</span>
-                    <strong>{{ item.finished_at.strftime('%d/%m/%Y %H:%M') }}</strong>
+            </div>
+
+
+            <div class="field">
+
+                <div class="label">
+                    Tempo de execução
                 </div>
-                {% endif %}
+
+                <div class="value">
+
+                    {% if item.started_at and item.finished_at %}
+
+                        {% set seconds = (item.finished_at - item.started_at).total_seconds() %}
+                        {% set hours = (seconds // 3600)|int %}
+                        {% set minutes = ((seconds % 3600) // 60)|int %}
+
+                        {{ hours }}h {{ minutes }}min
+
+                    {% else %}
+
+                        -
+
+                    {% endif %}
+
+                </div>
 
             </div>
 
-            {% if item.diagnosis %}
-            <div class="result-box">
-                <span>Diagnóstico</span>
-                <p>{{ item.diagnosis }}</p>
+
+            <div class="field full">
+
+                <div class="label">
+                    Diagnóstico
+                </div>
+
+                <div class="value">
+                    {{ item.diagnosis or "Não informado" }}
+                </div>
+
             </div>
-            {% endif %}
 
-            {% if item.cause %}
-            <div class="result-box">
-                <span>Causa</span>
-                <p>{{ item.cause }}</p>
+
+            <div class="field full">
+
+                <div class="label">
+                    Causa identificada
+                </div>
+
+                <div class="value">
+                    {{ item.cause or "Não informado" }}
+                </div>
+
             </div>
-            {% endif %}
 
-            {% if item.service_done %}
-            <div class="result-box">
-                <span>Serviço realizado</span>
-                <p>{{ item.service_done }}</p>
+
+            <div class="field full">
+
+                <div class="label">
+                    Serviço realizado
+                </div>
+
+                <div class="value">
+                    {{ item.service_done or "Não informado" }}
+                </div>
+
             </div>
-            {% endif %}
 
-            {% if item.parts_used %}
-            <div class="result-box">
-                <span>Peças / Materiais</span>
-                <p>{{ item.parts_used }}</p>
+
+            <div class="field full">
+
+                <div class="label">
+                    Peças / materiais utilizados
+                </div>
+
+                <div class="value">
+                    {{ item.parts_used or "Nenhum informado" }}
+                </div>
+
             </div>
-            {% endif %}
 
-            {% if item.observations %}
-            <div class="result-box">
-                <span>Observações</span>
-                <p>{{ item.observations }}</p>
+
+            <div class="field full">
+
+                <div class="label">
+                    Observações
+                </div>
+
+                <div class="value">
+                    {{ item.observations or "Nenhuma observação" }}
+                </div>
+
             </div>
-            {% endif %}
 
-        </section>
+        </div>
 
-        {% endif %}
+    </div>
+
+
+    <!-- IMPRESSÃO -->
+    {% if user.role == "adm" %}
+
+    <div class="card">
+
+        <h2>🖨️ Ordem de Serviço</h2>
+
+        <p style="margin-top:0;color:#6b7280;">
+            Gere a versão própria para impressão desta ordem de serviço.
+        </p>
+
+        <div class="form-actions">
+
+            <a
+                href="/solicitacao/{{ item.id }}/imprimir"
+                target="_blank"
+                class="btn btn-primary"
+            >
+                🖨️ Imprimir O.S.
+            </a>
+
+        </div>
+
+    </div>
+
+    {% endif %}
 
     {% endif %}
 
@@ -697,42 +1132,29 @@
     <!-- HISTÓRICO -->
     {% if item.history %}
 
-    <section class="detail-card">
+    <div class="card">
 
-        <div class="card-heading">
+        <h2>🕘 Histórico</h2>
 
-            <div>
-                <span class="card-icon">🕘</span>
+        <div class="timeline">
 
-                <div>
-                    <h2>Histórico</h2>
-                    <p>Registro das movimentações desta solicitação.</p>
+            {% for history in item.history|sort(attribute="created_at", reverse=true) %}
+
+            <div class="timeline-item">
+
+                <div class="timeline-action">
+                    {{ history.action }}
                 </div>
-            </div>
 
-        </div>
+                <div class="timeline-date">
 
-        <div class="history">
+                    {% if history.user %}
+                        {{ history.user.name }} •
+                    {% endif %}
 
-            {% for event in item.history|sort(attribute='created_at', reverse=true) %}
-
-            <div class="history-item">
-
-                <div class="history-dot"></div>
-
-                <div class="history-content">
-
-                    <strong>
-                        {{ event.action }}
-                    </strong>
-
-                    <span>
-                        {{ event.created_at.strftime('%d/%m/%Y %H:%M') }}
-                    </span>
-
-                    <small>
-                        {{ event.user.name }}
-                    </small>
+                    {% if history.created_at %}
+                        {{ history.created_at.strftime("%d/%m/%Y %H:%M") }}
+                    {% endif %}
 
                 </div>
 
@@ -742,7 +1164,7 @@
 
         </div>
 
-    </section>
+    </div>
 
     {% endif %}
 
