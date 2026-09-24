@@ -1,21 +1,1063 @@
-🔧
-MANUTENÇÃO Gestão de Serviços
-MENU
-▦ Dashboard {% if counts.pendente > 0 %} {{ counts.pendente }} {% endif %} 📊 Relatórios
-{{ user.name[0]|upper }}
-{{ user.name }} {% if user.role == "adm" %} Administrador {% else %} Manutenção {% endif %}
-↪ Sair do sistema
-Sistema / Relatórios
-Relatórios
-Desempenho da equipe com base em {{ total_concluded }} solicitaç{% if total_concluded == 1 %}ão concluída{% else %}ões concluídas{% endif %}.
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-{{ user.name[0]|upper }}
-{{ user.name }} Online
-{% if total_concluded == 0 %}
-📊
-Ainda não há dados suficientes
-Os relatórios aparecem aqui assim que solicitações forem concluídas.
+    <title>Relatórios - Manutenção</title>
 
-{% else %}
-Atendimentos por funcionário
-Quantidade de ordens de serviço concluídas por cada técnico.
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f3f5f7;
+            color: #202124;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* =========================
+           SIDEBAR
+        ========================= */
+
+        .sidebar {
+            width: 250px;
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            padding: 25px 18px;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 10px 25px;
+            border-bottom: 1px solid #eeeeee;
+            margin-bottom: 25px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: #1f2937;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .brand-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: #777;
+            margin-top: 3px;
+        }
+
+        .menu-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #999;
+            font-weight: 700;
+            margin: 0 10px 10px;
+            letter-spacing: .5px;
+        }
+
+        .menu a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 13px;
+            border-radius: 9px;
+            margin-bottom: 5px;
+            color: #4b5563;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .menu a:hover {
+            background: #f3f4f6;
+        }
+
+        .menu a.active {
+            background: #eef2ff;
+            color: #1d4ed8;
+        }
+
+        .menu-icon {
+            width: 23px;
+            text-align: center;
+            font-size: 17px;
+        }
+
+        .logout {
+            position: absolute;
+            bottom: 20px;
+            left: 18px;
+            right: 18px;
+        }
+
+        .logout a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 13px;
+            border-radius: 9px;
+            color: #b91c1c;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .logout a:hover {
+            background: #fef2f2;
+        }
+
+        /* =========================
+           CONTEÚDO
+        ========================= */
+
+        .content {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+            padding: 30px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .page-title {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 750;
+        }
+
+        .page-description {
+            margin: 6px 0 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .user-info {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+
+        .user-info strong {
+            color: #111827;
+        }
+
+        /* =========================
+           FILTROS
+        ========================= */
+
+        .filter-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 22px;
+        }
+
+        .filter-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 12px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #4b5563;
+        }
+
+        select,
+        input {
+            height: 42px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 0 12px;
+            background: white;
+            font-size: 14px;
+            min-width: 170px;
+            outline: none;
+        }
+
+        select:focus,
+        input:focus {
+            border-color: #2563eb;
+        }
+
+        .btn {
+            height: 42px;
+            border: 0;
+            border-radius: 8px;
+            padding: 0 20px;
+            background: #2563eb;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        /* =========================
+           CARDS
+        ========================= */
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .card-label {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .card-value {
+            font-size: 30px;
+            font-weight: 800;
+            margin-top: 8px;
+            color: #111827;
+        }
+
+        .card-description {
+            margin-top: 5px;
+            color: #9ca3af;
+            font-size: 12px;
+        }
+
+        /* =========================
+           GRÁFICOS
+        ========================= */
+
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 22px;
+        }
+
+        .chart-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 20px;
+            min-height: 360px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 750;
+            margin-bottom: 4px;
+        }
+
+        .chart-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        /* =========================
+           TABELA
+        ========================= */
+
+        .table-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 22px;
+        }
+
+        .table-header {
+            padding: 20px;
+            border-bottom: 1px solid #eeeeee;
+        }
+
+        .table-title {
+            font-size: 16px;
+            font-weight: 750;
+        }
+
+        .table-subtitle {
+            margin-top: 4px;
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            background: #f9fafb;
+            color: #6b7280;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            padding: 13px 18px;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 15px 18px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+
+        tr:hover td {
+            background: #fafafa;
+        }
+
+        .number {
+            font-weight: 750;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 35px;
+            color: #9ca3af;
+        }
+
+        /* =========================
+           RESPONSIVO
+        ========================= */
+
+        @media (max-width: 1100px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .charts {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                width: 210px;
+            }
+
+            .content {
+                margin-left: 210px;
+                width: calc(100% - 210px);
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .layout {
+                display: block;
+            }
+
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+
+            .logout {
+                position: relative;
+                left: auto;
+                right: auto;
+                bottom: auto;
+                margin-top: 20px;
+            }
+
+            .content {
+                margin-left: 0;
+                width: 100%;
+                padding: 15px;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .topbar {
+                align-items: flex-start;
+                gap: 15px;
+                flex-direction: column;
+            }
+
+            .filter-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            select,
+            input,
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-icon">
+                🔧
+            </div>
+
+            <div>
+                <div class="brand-title">
+                    MANUTENÇÃO
+                </div>
+
+                <div class="brand-subtitle">
+                    Gestão de Serviços
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-title">
+            Menu
+        </div>
+
+        <nav class="menu">
+
+            <a href="/painel">
+                <span class="menu-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="/relatorios" class="active">
+                <span class="menu-icon">📈</span>
+                <span>Relatórios</span>
+            </a>
+
+        </nav>
+
+        <div class="logout">
+            <a href="/logout">
+                <span>🚪</span>
+                <span>Sair</span>
+            </a>
+        </div>
+
+    </aside>
+
+
+    <!-- CONTEÚDO -->
+    <main class="content">
+
+        <div class="topbar">
+
+            <div>
+                <h1 class="page-title">
+                    Relatórios
+                </h1>
+
+                <p class="page-description">
+                    Indicadores de desempenho da manutenção
+                </p>
+            </div>
+
+            <div class="user-info">
+                Usuário:
+                <strong>{{ user.username }}</strong>
+            </div>
+
+        </div>
+
+
+        <!-- FILTROS -->
+        <section class="filter-card">
+
+            <div class="filter-title">
+                🔎 Período de análise
+            </div>
+
+            <form
+                method="get"
+                action="/relatorios"
+                class="filter-form"
+                id="filtroForm"
+            >
+
+                <div class="field">
+
+                    <label for="periodo">
+                        Período
+                    </label>
+
+                    <select
+                        name="periodo"
+                        id="periodo"
+                        onchange="alterarCampoData()"
+                    >
+                        <option
+                            value="dia"
+                            {% if periodo == "dia" %}selected{% endif %}
+                        >
+                            Dia
+                        </option>
+
+                        <option
+                            value="mes"
+                            {% if periodo == "mes" %}selected{% endif %}
+                        >
+                            Mês
+                        </option>
+
+                        <option
+                            value="ano"
+                            {% if periodo == "ano" %}selected{% endif %}
+                        >
+                            Ano
+                        </option>
+                    </select>
+
+                </div>
+
+
+                <div class="field">
+
+                    <label for="data_filtro">
+                        Data
+                    </label>
+
+                    <input
+                        id="data_filtro"
+                        name="data_filtro"
+                        type="month"
+                        value="{{ data_filtro }}"
+                    >
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="btn"
+                >
+                    Aplicar filtro
+                </button>
+
+            </form>
+
+        </section>
+
+
+        <!-- RESUMO -->
+        <section class="cards">
+
+            <div class="card">
+
+                <div class="card-label">
+                    Concluídas
+                </div>
+
+                <div class="card-value">
+                    {{ total_concluded }}
+                </div>
+
+                <div class="card-description">
+                    Serviços concluídos no período
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Pendentes
+                </div>
+
+                <div class="card-value">
+                    {{ counts.get("PENDENTE", 0) }}
+                </div>
+
+                <div class="card-description">
+                    Solicitações aguardando atendimento
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Agendadas
+                </div>
+
+                <div class="card-value">
+                    {{ counts.get("AGENDADA", 0) }}
+                </div>
+
+                <div class="card-description">
+                    Serviços programados
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Em atendimento
+                </div>
+
+                <div class="card-value">
+                    {{ counts.get("EM ATENDIMENTO", 0) }}
+                </div>
+
+                <div class="card-description">
+                    Serviços atualmente em execução
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- GRÁFICOS -->
+        <section class="charts">
+
+            <!-- GRÁFICO 1 -->
+            <div class="chart-card">
+
+                <div class="chart-title">
+                    Serviços por colaborador
+                </div>
+
+                <div class="chart-subtitle">
+                    Quantidade de ordens concluídas no período
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="graficoColaboradores"></canvas>
+                </div>
+
+            </div>
+
+
+            <!-- GRÁFICO 2 -->
+            <div class="chart-card">
+
+                <div class="chart-title">
+                    Tempo médio de execução
+                </div>
+
+                <div class="chart-subtitle">
+                    Média entre início e conclusão do serviço
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="graficoTempo"></canvas>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- GRÁFICOS DE PRIORIDADE -->
+        <section class="charts">
+
+            <div class="chart-card">
+
+                <div class="chart-title">
+                    Serviços por prioridade
+                </div>
+
+                <div class="chart-subtitle">
+                    Distribuição das ordens concluídas
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="graficoPrioridade"></canvas>
+                </div>
+
+            </div>
+
+
+            <div class="chart-card">
+
+                <div class="chart-title">
+                    Tempo médio por prioridade
+                </div>
+
+                <div class="chart-subtitle">
+                    Tempo entre abertura e conclusão
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="graficoTempoPrioridade"></canvas>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- TABELA -->
+        <section class="table-card">
+
+            <div class="table-header">
+
+                <div class="table-title">
+                    Desempenho dos colaboradores
+                </div>
+
+                <div class="table-subtitle">
+                    Quantidade de serviços e tempo médio de execução
+                </div>
+
+            </div>
+
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Serviços concluídos</th>
+                            <th>Tempo médio</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                    {% if employee_labels %}
+
+                        {% for i in range(employee_labels|length) %}
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    {{ employee_labels[i] }}
+                                </strong>
+                            </td>
+
+                            <td class="number">
+                                {{ employee_counts[i] }}
+                            </td>
+
+                            <td>
+                                {{ employee_avg_hours[i] }} h
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="3" class="empty">
+                                Nenhum serviço concluído no período selecionado.
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script>
+
+    /*
+     * ALTERA O TIPO DO CAMPO DE DATA
+     * conforme o período escolhido.
+     */
+    function alterarCampoData() {
+
+        const periodo = document.getElementById("periodo").value;
+        const campo = document.getElementById("data_filtro");
+
+        if (periodo === "dia") {
+
+            campo.type = "date";
+
+        } else if (periodo === "ano") {
+
+            campo.type = "number";
+            campo.min = "2020";
+            campo.max = "2100";
+
+        } else {
+
+            campo.type = "month";
+
+        }
+    }
+
+
+    /*
+     * Configuração inicial.
+     */
+    document.addEventListener("DOMContentLoaded", function () {
+
+        alterarCampoData();
+
+
+        /*
+         * GRÁFICO DE COLABORADORES
+         */
+
+        const colaboradores = {{ employee_labels | tojson }};
+        const quantidade = {{ employee_counts | tojson }};
+
+        new Chart(
+            document.getElementById("graficoColaboradores"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: colaboradores,
+
+                    datasets: [
+                        {
+                            label: "Serviços concluídos",
+                            data: quantidade,
+
+                            borderWidth: 1
+                        }
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+
+        /*
+         * GRÁFICO DE TEMPO MÉDIO
+         */
+
+        const tempos = {{ employee_avg_hours | tojson }};
+
+        new Chart(
+            document.getElementById("graficoTempo"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: colaboradores,
+
+                    datasets: [
+                        {
+                            label: "Horas",
+                            data: tempos,
+
+                            borderWidth: 1
+                        }
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            }
+        );
+
+
+        /*
+         * GRÁFICO DE PRIORIDADES
+         */
+
+        const prioridades = {{ priority_labels | tojson }};
+        const prioridadeQtd = {{ priority_counts | tojson }};
+
+        new Chart(
+            document.getElementById("graficoPrioridade"),
+            {
+                type: "doughnut",
+
+                data: {
+                    labels: prioridades,
+
+                    datasets: [
+                        {
+                            data: prioridadeQtd,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            position: "bottom"
+                        }
+                    }
+                }
+            }
+        );
+
+
+        /*
+         * TEMPO MÉDIO POR PRIORIDADE
+         */
+
+        const prioridadeTempo = {{ priority_avg_hours | tojson }};
+
+        new Chart(
+            document.getElementById("graficoTempoPrioridade"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: prioridades,
+
+                    datasets: [
+                        {
+                            label: "Horas",
+                            data: prioridadeTempo,
+
+                            borderWidth: 1
+                        }
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            }
+        );
+
+    });
+
+</script>
+
+</body>
+</html>
