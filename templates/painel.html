@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -30,18 +29,12 @@
             font-family: inherit;
         }
 
-        /* =========================
-           LAYOUT
-        ========================= */
-
         .app {
             display: flex;
             min-height: 100vh;
         }
 
-        /* =========================
-           SIDEBAR
-        ========================= */
+        /* SIDEBAR */
 
         .sidebar {
             width: 250px;
@@ -182,9 +175,7 @@
             color: #fff;
         }
 
-        /* =========================
-           MAIN
-        ========================= */
+        /* MAIN */
 
         .main {
             margin-left: 250px;
@@ -230,9 +221,7 @@
             padding: 28px 30px 40px;
         }
 
-        /* =========================
-           USER ONLINE
-        ========================= */
+        /* WELCOME */
 
         .welcome {
             background: #fff;
@@ -261,9 +250,7 @@
             margin-top: 3px;
         }
 
-        /* =========================
-           CARDS
-        ========================= */
+        /* CARDS */
 
         .stats {
             display: grid;
@@ -344,9 +331,7 @@
             font-size: 11px;
         }
 
-        /* =========================
-           FILTERS
-        ========================= */
+        /* FILTROS */
 
         .filter-box {
             background: #fff;
@@ -433,9 +418,7 @@
             background: #e1e5e9;
         }
 
-        /* =========================
-           TABLE
-        ========================= */
+        /* TABLE */
 
         .requests {
             background: #fff;
@@ -532,9 +515,7 @@
             line-height: 1.4;
         }
 
-        /* =========================
-           BADGES
-        ========================= */
+        /* BADGES */
 
         .status,
         .priority {
@@ -588,7 +569,7 @@
             color: #245eb5;
         }
 
-        .status-concluída {
+        .status-concluida {
             background: #e7f7ef;
             color: #23704b;
         }
@@ -628,11 +609,16 @@
             color: #2563eb;
             font-size: 18px;
             font-weight: 700;
+            transition: .2s;
         }
 
-        /* =========================
-           EMPTY
-        ========================= */
+        .view:hover {
+            color: #1d4ed8;
+            transform: translateX(2px);
+            display: inline-block;
+        }
+
+        /* EMPTY */
 
         .empty {
             padding: 55px 20px;
@@ -663,9 +649,7 @@
             margin-bottom: 15px;
         }
 
-        /* =========================
-           MOBILE
-        ========================= */
+        /* MOBILE */
 
         @media (max-width: 1000px) {
             .stats {
@@ -674,6 +658,7 @@
         }
 
         @media (max-width: 750px) {
+
             .sidebar {
                 width: 70px;
             }
@@ -741,6 +726,7 @@
         }
 
         @media (max-width: 520px) {
+
             .stats {
                 grid-template-columns: 1fr;
             }
@@ -765,9 +751,7 @@
 
 <div class="app">
 
-    <!-- =========================
-         SIDEBAR
-    ========================== -->
+    <!-- SIDEBAR -->
 
     <aside class="sidebar">
 
@@ -813,11 +797,13 @@
                     </div>
 
                     <div class="user-role">
+
                         {% if user.role == "adm" %}
                             Administrador
                         {% else %}
                             Manutenção
                         {% endif %}
+
                     </div>
 
                 </div>
@@ -833,9 +819,7 @@
     </aside>
 
 
-    <!-- =========================
-         CONTEÚDO
-    ========================== -->
+    <!-- MAIN -->
 
     <main class="main">
 
@@ -848,8 +832,13 @@
             <div class="page-header">
 
                 <div>
+
                     <h2>Dashboard</h2>
-                    <p>Visão geral das solicitações de manutenção.</p>
+
+                    <p>
+                        Visão geral das solicitações de manutenção.
+                    </p>
+
                 </div>
 
             </div>
@@ -868,8 +857,15 @@
                 </div>
 
                 <div class="welcome-info">
-                    <strong>{{ user.name }}</strong>
-                    <div class="online">● Online</div>
+
+                    <strong>
+                        {{ user.name }}
+                    </strong>
+
+                    <div class="online">
+                        ● Online
+                    </div>
+
                 </div>
 
             </div>
@@ -882,8 +878,15 @@
                 <div class="stat-card pending">
 
                     <div class="stat-top">
-                        <div class="stat-title">PENDENTES</div>
-                        <div class="stat-icon">!</div>
+
+                        <div class="stat-title">
+                            PENDENTES
+                        </div>
+
+                        <div class="stat-icon">
+                            !
+                        </div>
+
                     </div>
 
                     <div class="stat-value">
@@ -900,8 +903,15 @@
                 <div class="stat-card scheduled">
 
                     <div class="stat-top">
-                        <div class="stat-title">AGENDADAS</div>
-                        <div class="stat-icon">◷</div>
+
+                        <div class="stat-title">
+                            AGENDADAS
+                        </div>
+
+                        <div class="stat-icon">
+                            ◷
+                        </div>
+
                     </div>
 
                     <div class="stat-value">
@@ -918,8 +928,15 @@
                 <div class="stat-card progress">
 
                     <div class="stat-top">
-                        <div class="stat-title">EM ATENDIMENTO</div>
-                        <div class="stat-icon">⚙</div>
+
+                        <div class="stat-title">
+                            EM ATENDIMENTO
+                        </div>
+
+                        <div class="stat-icon">
+                            ⚙
+                        </div>
+
                     </div>
 
                     <div class="stat-value">
@@ -936,8 +953,15 @@
                 <div class="stat-card done">
 
                     <div class="stat-top">
-                        <div class="stat-title">CONCLUÍDAS</div>
-                        <div class="stat-icon">✓</div>
+
+                        <div class="stat-title">
+                            CONCLUÍDAS
+                        </div>
+
+                        <div class="stat-icon">
+                            ✓
+                        </div>
+
                     </div>
 
                     <div class="stat-value">
@@ -958,8 +982,15 @@
             <div class="filter-box">
 
                 <div class="filter-header">
-                    <h3>☷ Filtrar solicitações</h3>
-                    <p>Refine os resultados abaixo.</p>
+
+                    <h3>
+                        ☷ Filtrar solicitações
+                    </h3>
+
+                    <p>
+                        Refine os resultados abaixo.
+                    </p>
+
                 </div>
 
                 <form method="get" action="/painel">
@@ -1042,14 +1073,22 @@
 
                         <div class="filter-actions">
 
-                            <button type="submit" class="btn btn-primary">
+                            <button
+                                type="submit"
+                                class="btn btn-primary"
+                            >
                                 Aplicar filtros
                             </button>
 
                             {% if status or priority %}
-                                <a href="/painel" class="btn btn-light">
+
+                                <a
+                                    href="/painel"
+                                    class="btn btn-light"
+                                >
                                     Limpar filtros
                                 </a>
+
                             {% endif %}
 
                         </div>
@@ -1092,207 +1131,248 @@
 
                 {% if rows %}
 
-                <div class="table-wrapper">
+                    <div class="table-wrapper">
 
-                    <table>
+                        <table>
 
-                        <thead>
+                            <thead>
 
-                            <tr>
+                                <tr>
 
-                                <th>OS</th>
-                                <th>SETOR</th>
-                                <th>EQUIPAMENTO / LOCAL</th>
-                                <th>PRIORIDADE</th>
-                                <th>STATUS</th>
-                                <th>RESPONSÁVEL</th>
-                                <th>ABERTURA</th>
-                                <th></th>
+                                    <th>OS</th>
+                                    <th>SETOR</th>
+                                    <th>EQUIPAMENTO / LOCAL</th>
+                                    <th>PRIORIDADE</th>
+                                    <th>STATUS</th>
+                                    <th>RESPONSÁVEL</th>
+                                    <th>ABERTURA</th>
+                                    <th></th>
 
-                            </tr>
+                                </tr>
 
-                        </thead>
+                            </thead>
 
-                        <tbody>
+                            <tbody>
 
-                        {% for item in rows %}
+                            {% for item in rows %}
 
-                            <tr>
+                                <tr>
 
-                                <td>
-                                    <span class="os-number">
-                                        #{{ item.id }}
-                                    </span>
-                                </td>
+                                    <td>
 
-
-                                <td>
-                                    <span class="sector">
-                                        {{ item.sector }}
-                                    </span>
-                                </td>
-
-
-                                <td>
-
-                                    <div class="equipment">
-                                        {{ item.equipment }}
-                                    </div>
-
-                                    <div class="description">
-
-                                        {{ item.description[:75] }}
-
-                                        {% if item.description|length > 75 %}
-                                            ...
-                                        {% endif %}
-
-                                    </div>
-
-                                </td>
-
-
-                                <td>
-
-                                    {% if item.priority == "Crítica" %}
-
-                                        <span class="priority priority-critical">
-                                            Crítica
+                                        <span class="os-number">
+                                            #{{ item.id }}
                                         </span>
 
-                                    {% elif item.priority == "Alta" %}
+                                    </td>
 
-                                        <span class="priority priority-high">
-                                            Alta
+
+                                    <td>
+
+                                        <span class="sector">
+                                            {{ item.sector }}
                                         </span>
 
-                                    {% elif item.priority == "Média" %}
-
-                                        <span class="priority priority-medium">
-                                            Média
-                                        </span>
-
-                                    {% else %}
-
-                                        <span class="priority priority-low">
-                                            Baixa
-                                        </span>
-
-                                    {% endif %}
-
-                                </td>
+                                    </td>
 
 
-                                <td>
+                                    <td>
 
-                                    {% set status_class = item.status|lower|replace(" ", "-") %}
+                                        <div class="equipment">
+                                            {{ item.equipment }}
+                                        </div>
 
-                                    <span class="status status-{{ status_class }}">
-                                        {{ item.status }}
-                                    </span>
+                                        <div class="description">
 
-                                </td>
+                                            {{ item.description[:75] }}
+
+                                            {% if item.description|length > 75 %}
+                                                ...
+                                            {% endif %}
+
+                                        </div>
+
+                                    </td>
 
 
-                                <td>
+                                    <td>
 
-                                    <div class="responsible">
+                                        {% if item.priority == "Crítica" %}
 
-                                        {% if item.scheduled_employee %}
-
-                                            <div class="small-avatar">
-                                                {{ item.scheduled_employee[0]|upper }}
-                                            </div>
-
-                                            <span class="responsible-name">
-                                                {{ item.scheduled_employee }}
+                                            <span class="priority priority-critical">
+                                                Crítica
                                             </span>
 
-                                        {% elif item.executor_name %}
+                                        {% elif item.priority == "Alta" %}
 
-                                            <div class="small-avatar">
-                                                {{ item.executor_name[0]|upper }}
-                                            </div>
+                                            <span class="priority priority-high">
+                                                Alta
+                                            </span>
 
-                                            <span class="responsible-name">
-                                                {{ item.executor_name }}
+                                        {% elif item.priority == "Média" %}
+
+                                            <span class="priority priority-medium">
+                                                Média
                                             </span>
 
                                         {% else %}
 
-                                            <div class="small-avatar">
-                                                ?
-                                            </div>
-
-                                            <span class="responsible-name">
-                                                Não definido
+                                            <span class="priority priority-low">
+                                                Baixa
                                             </span>
 
                                         {% endif %}
 
-                                    </div>
-
-                                </td>
+                                    </td>
 
 
-                                <td>
+                                    <td>
 
-                                    <div class="date">
+                                        {% if item.status == "PENDENTE" %}
 
-                                        {{ item.created_at.strftime('%d/%m/%Y') }}
+                                            <span class="status status-pendente">
+                                                PENDENTE
+                                            </span>
 
-                                        <br>
+                                        {% elif item.status == "AGENDADA" %}
 
-                                        {{ item.created_at.strftime('%H:%M') }}
+                                            <span class="status status-agendada">
+                                                AGENDADA
+                                            </span>
 
-                                    </div>
+                                        {% elif item.status == "EM ATENDIMENTO" %}
 
-                                </td>
+                                            <span class="status status-em-atendimento">
+                                                EM ATENDIMENTO
+                                            </span>
+
+                                        {% elif item.status == "CONCLUÍDA" %}
+
+                                            <span class="status status-concluida">
+                                                CONCLUÍDA
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="status">
+                                                {{ item.status }}
+                                            </span>
+
+                                        {% endif %}
+
+                                    </td>
 
 
-                                <td>
+                                    <td>
 
-                                    <a href="/os/{{ item.id }}" class="view" title="Visualizar OS">
-                                        →
-                                    </a>
+                                        <div class="responsible">
 
-                                </td>
+                                            {% if item.scheduled_employee %}
 
-                            </tr>
+                                                <div class="small-avatar">
+                                                    {{ item.scheduled_employee[0]|upper }}
+                                                </div>
 
-                        {% endfor %}
+                                                <span class="responsible-name">
+                                                    {{ item.scheduled_employee }}
+                                                </span>
 
-                        </tbody>
+                                            {% elif item.executor_name %}
 
-                    </table>
+                                                <div class="small-avatar">
+                                                    {{ item.executor_name[0]|upper }}
+                                                </div>
 
-                </div>
+                                                <span class="responsible-name">
+                                                    {{ item.executor_name }}
+                                                </span>
+
+                                            {% else %}
+
+                                                <div class="small-avatar">
+                                                    ?
+                                                </div>
+
+                                                <span class="responsible-name">
+                                                    Não definido
+                                                </span>
+
+                                            {% endif %}
+
+                                        </div>
+
+                                    </td>
+
+
+                                    <td>
+
+                                        <div class="date">
+
+                                            {{ item.created_at.strftime('%d/%m/%Y') }}
+
+                                            <br>
+
+                                            {{ item.created_at.strftime('%H:%M') }}
+
+                                        </div>
+
+                                    </td>
+
+
+                                    <td>
+
+                                        <!-- CORRIGIDO:
+                                             antes estava /os/{{ item.id }}
+                                             agora usa a rota existente no main.py -->
+
+                                        <a
+                                            href="/solicitacao/{{ item.id }}"
+                                            class="view"
+                                            title="Visualizar OS"
+                                        >
+                                            →
+                                        </a>
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
 
                 {% else %}
 
-                <div class="empty">
+                    <div class="empty">
 
-                    <div class="empty-icon">
-                        ✓
+                        <div class="empty-icon">
+                            ✓
+                        </div>
+
+                        <h4>
+                            Nenhuma solicitação encontrada
+                        </h4>
+
+                        <p>
+                            Não existem solicitações para os filtros selecionados.
+                        </p>
+
+                        {% if status or priority %}
+
+                            <a
+                                href="/painel"
+                                class="btn btn-light"
+                            >
+                                Limpar filtros
+                            </a>
+
+                        {% endif %}
+
                     </div>
-
-                    <h4>
-                        Nenhuma solicitação encontrada
-                    </h4>
-
-                    <p>
-                        Não existem solicitações para os filtros selecionados.
-                    </p>
-
-                    {% if status or priority %}
-
-                        <a href="/painel" class="btn btn-light">
-                            Limpar filtros
-                        </a>
-
-                    {% endif %}
-
-                </div>
 
                 {% endif %}
 
@@ -1306,4 +1386,3 @@
 
 </body>
 </html>
-```
