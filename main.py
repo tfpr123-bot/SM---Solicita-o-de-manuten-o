@@ -421,7 +421,7 @@ Base.metadata.create_all(
 
 def migrate_database():
     """
-    Adiciona as novas colunas em bancos existentes
+    Adiciona colunas novas em bancos existentes
     sem apagar os dados atuais.
     """
 
@@ -444,6 +444,11 @@ def migrate_database():
         "scheduled_employee": "VARCHAR(120)",
         "scheduling_note": "TEXT",
         "executor_name": "VARCHAR(120)",
+        "diagnosis": "TEXT",
+        "cause": "TEXT",
+        "service_done": "TEXT",
+        "parts_used": "TEXT",
+        "observations": "TEXT",
     }
 
     with engine.begin() as connection:
@@ -570,7 +575,10 @@ def get_status_counts(db: Session):
     ):
         counts[key] = (
             db.query(MaintenanceRequest)
-            .filter(MaintenanceRequest.status == status_value)
+            .filter(
+                MaintenanceRequest.status
+                == status_value
+            )
             .count()
         )
 
@@ -909,10 +917,22 @@ def my_requests(
     )
 
     counts = {
-        "pendente": sum(1 for r in rows if r.status == "PENDENTE"),
-        "agendada": sum(1 for r in rows if r.status == "AGENDADA"),
-        "atendimento": sum(1 for r in rows if r.status == "EM ATENDIMENTO"),
-        "concluida": sum(1 for r in rows if r.status == "CONCLUÍDA"),
+        "pendente": sum(
+            1 for r in rows
+            if r.status == "PENDENTE"
+        ),
+        "agendada": sum(
+            1 for r in rows
+            if r.status == "AGENDADA"
+        ),
+        "atendimento": sum(
+            1 for r in rows
+            if r.status == "EM ATENDIMENTO"
+        ),
+        "concluida": sum(
+            1 for r in rows
+            if r.status == "CONCLUÍDA"
+        ),
     }
 
     return templates.TemplateResponse(
@@ -959,12 +979,14 @@ def dashboard(
 
     if status:
         query = query.filter(
-            MaintenanceRequest.status == status
+            MaintenanceRequest.status
+            == status
         )
 
     if priority:
         query = query.filter(
-            MaintenanceRequest.priority == priority
+            MaintenanceRequest.priority
+            == priority
         )
 
     rows = (
@@ -1000,6 +1022,8 @@ def dashboard(
 )
 def relatorios(
     request: Request,
+    periodo: str = "mes",
+    data_filtro: str = "",
     db: Session = Depends(get_db),
 ):
     user, redirect = require_login(
@@ -1010,28 +1034,182 @@ def relatorios(
     if redirect:
         return redirect
 
+    # Relatórios são exclusivos do ADM
     require_role(
         user,
-        ["manutencao", "adm"],
+        ["adm"],
     )
+
+    # -----------------------------------------------------
+    # DEFINIÇÃO DO PERÍODO
+    # -----------------------------------------------------
+
+    inicio = None
+    fim = None
+
+    hoje = datetime.now()
+
+    if periodo == "dia":
+
+        if data_filtro:
+
+            try:
+                data_base = datetime.strptime(
+                    data_filtro,
+                    "%Y-%m-%d",
+                )
+
+            except ValueError:
+                data_base = hoje
+
+        else:
+            data_base = hoje
+
+        inicio = data_base.replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+        fim = inicio.replace(
+            hour=23,
+            minute=59,
+            second=59,
+            microsecond=999999,
+        )
+
+    elif periodo == "ano":
+
+        if data_filtro:
+
+            try:
+                ano = int(data_filtro)
+
+            except ValueError:
+                ano = hoje.year
+
+        else:
+            ano = hoje.year
+
+        inicio = datetime(
+            ano,
+            1,
+            1,
+            0,
+            0,
+            0,
+        )
+
+        fim = datetime(
+            ano + 1,
+            1,
+            1,
+            0,
+            0,
+            0,
+        )
+
+    else:
+
+        # Padrão: mês atual
+        periodo = "mes"
+
+        if data_filtro:
+
+            try:
+                data_base = datetime.strptime(
+                    data_filtro,
+                    "%Y-%m",
+                )
+
+            except ValueError:
+                data_base = hoje
+
+        else:
+            data_base = hoje
+
+        inicio = data_base.replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+
+        if inicio.month == 12:
+
+            fim = datetime(
+                inicio.year + 1,
+                1,
+                1,
+                0,
+                0,
+                0,
+            )
+
+        else:
+
+            fim = datetime(
+                inicio.year,
+                inicio.month + 1,
+                1,
+                0,
+                0,
+                0,
+            )
+
+    # -----------------------------------------------------
+    # BUSCAR SERVIÇOS CONCLUÍDOS NO PERÍODO
+    # -----------------------------------------------------
 
     concluded = (
         db.query(MaintenanceRequest)
-        .filter(MaintenanceRequest.status == "CONCLUÍDA")
+        .filter(
+            MaintenanceRequest.status
+            == "CONCLUÍDA",
+
+            MaintenanceRequest.finished_at
+            >= inicio,
+
+            MaintenanceRequest.finished_at
+            < fim,
+        )
+        .order_by(
+            MaintenanceRequest.finished_at.asc()
+        )
         .all()
     )
 
-    # ---------------------------------------------------
-    # Atendimentos por funcionário
-    # ---------------------------------------------------
+    # -----------------------------------------------------
+    # SERVIÇOS POR COLABORADOR
+    # -----------------------------------------------------
 
     employee_stats = {}
 
+    # Todos os colaboradores começam com zero
+    for employee in MAINTENANCE_EMPLOYEES:
+
+        employee_stats[employee] = {
+            "count": 0,
+            "total_hours": 0.0,
+        }
+
+    # Registros antigos sem executor
+    employee_stats["Não informado"] = {
+        "count": 0,
+        "total_hours": 0.0,
+    }
+
     for req in concluded:
 
-        name = req.executor_name or "Não informado"
+        name = (
+            req.executor_name
+            or "Não informado"
+        )
 
         if name not in employee_stats:
+
             employee_stats[name] = {
                 "count": 0,
                 "total_hours": 0.0,
@@ -1039,74 +1217,159 @@ def relatorios(
 
         employee_stats[name]["count"] += 1
 
-        if req.started_at and req.finished_at:
+        if (
+            req.started_at
+            and req.finished_at
+        ):
+
             hours = (
-                req.finished_at - req.started_at
+                req.finished_at
+                - req.started_at
             ).total_seconds() / 3600
 
-            employee_stats[name]["total_hours"] += hours
+            employee_stats[name][
+                "total_hours"
+            ] += hours
 
-    employee_labels = sorted(
-        employee_stats.keys(),
-        key=lambda n: employee_stats[n]["count"],
-        reverse=True,
+    # -----------------------------------------------------
+    # ORDEM DOS COLABORADORES
+    # -----------------------------------------------------
+
+    employee_labels = list(
+        MAINTENANCE_EMPLOYEES
     )
 
-    employee_counts = [
-        employee_stats[n]["count"] for n in employee_labels
-    ]
+    # Só aparece se existir serviço sem executor
+    if (
+        employee_stats["Não informado"]["count"]
+        > 0
+    ):
 
-    employee_avg_hours = [
-        round(
-            employee_stats[n]["total_hours"]
-            / employee_stats[n]["count"],
-            1,
+        employee_labels.append(
+            "Não informado"
         )
-        if employee_stats[n]["count"]
-        else 0
-        for n in employee_labels
+
+    employee_counts = [
+        employee_stats[name]["count"]
+        for name in employee_labels
     ]
 
-    # ---------------------------------------------------
-    # Tempo médio por prioridade (abertura -> conclusão)
-    # ---------------------------------------------------
+    employee_avg_hours = []
 
-    priority_order = ["Baixa", "Média", "Alta", "Crítica"]
+    for name in employee_labels:
+
+        count = employee_stats[name]["count"]
+
+        if count > 0:
+
+            avg = (
+                employee_stats[name][
+                    "total_hours"
+                ]
+                / count
+            )
+
+            employee_avg_hours.append(
+                round(avg, 1)
+            )
+
+        else:
+
+            employee_avg_hours.append(0)
+
+    # -----------------------------------------------------
+    # TOTAL DE SERVIÇOS
+    # -----------------------------------------------------
+
+    total_concluded = len(
+        concluded
+    )
+
+    # -----------------------------------------------------
+    # TEMPO MÉDIO POR PRIORIDADE
+    # -----------------------------------------------------
+
+    priority_order = [
+        "Baixa",
+        "Média",
+        "Alta",
+        "Crítica",
+    ]
 
     priority_stats = {
-        p: {"count": 0, "total_hours": 0.0}
-        for p in priority_order
+        priority: {
+            "count": 0,
+            "total_hours": 0.0,
+        }
+
+        for priority in priority_order
     }
 
     for req in concluded:
 
-        p = req.priority if req.priority in priority_stats else "Média"
+        priority = req.priority
 
-        priority_stats[p]["count"] += 1
+        if priority not in priority_stats:
 
-        if req.created_at and req.finished_at:
+            priority = "Média"
+
+        priority_stats[priority][
+            "count"
+        ] += 1
+
+        if (
+            req.created_at
+            and req.finished_at
+        ):
+
             hours = (
-                req.finished_at - req.created_at
+                req.finished_at
+                - req.created_at
             ).total_seconds() / 3600
 
-            priority_stats[p]["total_hours"] += hours
+            priority_stats[priority][
+                "total_hours"
+            ] += hours
 
     priority_counts = [
-        priority_stats[p]["count"] for p in priority_order
-    ]
-
-    priority_avg_hours = [
-        round(
-            priority_stats[p]["total_hours"]
-            / priority_stats[p]["count"],
-            1,
-        )
-        if priority_stats[p]["count"]
-        else 0
+        priority_stats[p]["count"]
         for p in priority_order
     ]
 
+    priority_avg_hours = []
+
+    for priority in priority_order:
+
+        count = priority_stats[priority][
+            "count"
+        ]
+
+        if count > 0:
+
+            avg = (
+                priority_stats[priority][
+                    "total_hours"
+                ]
+                / count
+            )
+
+            priority_avg_hours.append(
+                round(avg, 1)
+            )
+
+        else:
+
+            priority_avg_hours.append(0)
+
+    # -----------------------------------------------------
+    # CONTADORES GERAIS
+    # -----------------------------------------------------
+
     counts = get_status_counts(db)
+
+    # -----------------------------------------------------
+    # TELA
+    # -----------------------------------------------------
 
     return templates.TemplateResponse(
         request=request,
@@ -1114,10 +1377,19 @@ def relatorios(
         context={
             "user": user,
             "counts": counts,
-            "total_concluded": len(concluded),
+
+            "periodo": periodo,
+            "data_filtro": data_filtro,
+
+            "inicio": inicio,
+            "fim": fim,
+
+            "total_concluded": total_concluded,
+
             "employee_labels": employee_labels,
             "employee_counts": employee_counts,
             "employee_avg_hours": employee_avg_hours,
+
             "priority_labels": priority_order,
             "priority_counts": priority_counts,
             "priority_avg_hours": priority_avg_hours,
@@ -1144,6 +1416,7 @@ def request_detail(
     )
 
     if not user:
+
         return RedirectResponse(
             "/login",
             status_code=303,
@@ -1155,6 +1428,7 @@ def request_detail(
     )
 
     if not req:
+
         raise HTTPException(
             status_code=404,
             detail="Solicitação não encontrada",
@@ -1164,6 +1438,7 @@ def request_detail(
         user.role == "lider"
         and req.requester_id != user.id
     ):
+
         raise HTTPException(
             status_code=403,
             detail="Acesso não autorizado",
@@ -1217,12 +1492,17 @@ def schedule_request(
     )
 
     if not req:
+
         raise HTTPException(
             status_code=404,
             detail="Solicitação não encontrada",
         )
 
-    if scheduled_employee not in MAINTENANCE_EMPLOYEES:
+    if (
+        scheduled_employee
+        not in MAINTENANCE_EMPLOYEES
+    ):
+
         raise HTTPException(
             status_code=400,
             detail="Funcionário inválido",
@@ -1233,15 +1513,26 @@ def schedule_request(
     )
 
     if not planned_datetime:
+
         raise HTTPException(
             status_code=400,
             detail="Data e horário do agendamento inválidos",
         )
 
-    req.scheduled_employee = scheduled_employee
-    req.planned_at = planned_datetime
-    req.scheduling_note = scheduling_note.strip()
+    req.scheduled_employee = (
+        scheduled_employee
+    )
+
+    req.planned_at = (
+        planned_datetime
+    )
+
+    req.scheduling_note = (
+        scheduling_note.strip()
+    )
+
     req.assigned_to_id = user.id
+
     req.status = "AGENDADA"
 
     db.commit()
@@ -1265,7 +1556,6 @@ def schedule_request(
 
 # =========================================================
 # LEGADO - ASSUMIR SOLICITAÇÃO
-# Mantido para não quebrar registros antigos.
 # =========================================================
 
 @app.post(
@@ -1295,15 +1585,18 @@ def take_request(
     )
 
     if not req:
+
         raise HTTPException(
             status_code=404,
             detail="Solicitação não encontrada",
         )
 
     req.assigned_to_id = user.id
+
     req.status = "EM ATENDIMENTO"
 
     if not req.started_at:
+
         req.started_at = datetime.now()
 
     db.commit()
@@ -1360,12 +1653,17 @@ def finish_request(
     )
 
     if not req:
+
         raise HTTPException(
             status_code=404,
             detail="Solicitação não encontrada",
         )
 
-    if executor_name not in MAINTENANCE_EMPLOYEES:
+    if (
+        executor_name
+        not in MAINTENANCE_EMPLOYEES
+    ):
+
         raise HTTPException(
             status_code=400,
             detail="Funcionário executor inválido",
@@ -1380,12 +1678,14 @@ def finish_request(
     )
 
     if not real_start or not real_finish:
+
         raise HTTPException(
             status_code=400,
             detail="Data ou horário da execução inválidos",
         )
 
     if real_finish < real_start:
+
         raise HTTPException(
             status_code=400,
             detail="O término não pode ser anterior ao início",
@@ -1394,17 +1694,23 @@ def finish_request(
     req.status = "CONCLUÍDA"
 
     req.started_at = real_start
+
     req.finished_at = real_finish
 
     req.executor_name = executor_name
 
     req.diagnosis = diagnosis.strip()
+
     req.cause = cause.strip()
+
     req.service_done = service_done.strip()
+
     req.parts_used = parts_used.strip()
+
     req.observations = observations.strip()
 
     if not req.assigned_to_id:
+
         req.assigned_to_id = user.id
 
     db.commit()
@@ -1415,7 +1721,8 @@ def finish_request(
         user,
         (
             f"Solicitação concluída. "
-            f"Execução realizada por {executor_name}"
+            f"Execução realizada por "
+            f"{executor_name}"
         ),
     )
 
@@ -1457,6 +1764,7 @@ def change_priority(
     )
 
     if not req:
+
         raise HTTPException(
             status_code=404,
             detail="Solicitação não encontrada",
@@ -1468,6 +1776,7 @@ def change_priority(
         "Alta",
         "Crítica",
     }:
+
         raise HTTPException(
             status_code=400,
             detail="Prioridade inválida",
@@ -1499,27 +1808,45 @@ def change_priority(
 # IMPRIMIR ORDEM DE SERVIÇO
 # =========================================================
 
-@app.get("/solicitacao/{request_id}/imprimir", response_class=HTMLResponse)
+@app.get(
+    "/solicitacao/{request_id}/imprimir",
+    response_class=HTMLResponse,
+)
 def imprimir_ordem(
     request: Request,
     request_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    user = current_user(request, db)
+    user = current_user(
+        request,
+        db,
+    )
 
     if not user:
-        return RedirectResponse("/login", status_code=303)
 
-    if user.role != "adm":
         return RedirectResponse(
-            f"/solicitacao/{request_id}",
-            status_code=303
+            "/login",
+            status_code=303,
         )
 
-    item = db.get(MaintenanceRequest, request_id)
+    if user.role != "adm":
+
+        return RedirectResponse(
+            f"/solicitacao/{request_id}",
+            status_code=303,
+        )
+
+    item = db.get(
+        MaintenanceRequest,
+        request_id,
+    )
 
     if not item:
-        return RedirectResponse("/painel", status_code=303)
+
+        return RedirectResponse(
+            "/painel",
+            status_code=303,
+        )
 
     return templates.TemplateResponse(
         request=request,
