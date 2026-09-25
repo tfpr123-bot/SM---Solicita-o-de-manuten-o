@@ -1,6 +1,7 @@
 import os
 import secrets
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException
@@ -76,6 +77,17 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+
+# =========================================================
+# DATA/HORA DO BRASIL
+# =========================================================
+
+BRASIL_TZ = ZoneInfo("America/Sao_Paulo")
+
+def brasil_now():
+    """Retorna a data/hora atual no fuso de São Paulo."""
+    return datetime.now(BRASIL_TZ).replace(tzinfo=None)
 
 
 # =========================================================
@@ -236,6 +248,7 @@ class MaintenanceRequest(Base):
         nullable=False,
     )
 
+    # Usuário que assumiu/agendou a solicitação
     assigned_to_id = Column(
         Integer,
         ForeignKey("users.id"),
@@ -244,7 +257,7 @@ class MaintenanceRequest(Base):
 
     created_at = Column(
         DateTime,
-        default=datetime.now,
+        default=brasil_now,
     )
 
     # =====================================================
@@ -396,7 +409,7 @@ class History(Base):
 
     created_at = Column(
         DateTime,
-        default=datetime.now,
+        default=brasil_now,
     )
 
     request = relationship(
@@ -592,38 +605,62 @@ def seed_admin():
     db = SessionLocal()
 
     try:
+        # Cria somente os usuários que ainda não existem.
+        # Assim, adicionar novos usuários não apaga nem recria os atuais.
+        default_users = [
+            {
+                "name": "Administrador",
+                "username": "admin",
+                "password": "admin123",
+                "role": "adm",
+            },
+            {
+                "name": "Líder de Manutenção",
+                "username": "manutencao",
+                "password": "manutencao123",
+                "role": "manutencao",
+            },
+            {
+                "name": "Líder de Produção",
+                "username": "lider",
+                "password": "lider123",
+                "role": "lider",
+            },
+            {
+                "name": "Painel",
+                "username": "painel",
+                "password": "painel123",
+                "role": "lider",
+            },
+            {
+                "name": "Externo",
+                "username": "externo",
+                "password": "externo123",
+                "role": "lider",
+            },
+        ]
 
-        if not db.query(User).first():
+        created = False
 
-            db.add_all(
-                [
-                    User(
-                        name="Administrador",
-                        username="admin",
-                        password_hash=pwd_context.hash(
-                            "admin123"
-                        ),
-                        role="adm",
-                    ),
-                    User(
-                        name="Líder de Manutenção",
-                        username="manutencao",
-                        password_hash=pwd_context.hash(
-                            "manutencao123"
-                        ),
-                        role="manutencao",
-                    ),
-                    User(
-                        name="Líder de Produção",
-                        username="lider",
-                        password_hash=pwd_context.hash(
-                            "lider123"
-                        ),
-                        role="lider",
-                    ),
-                ]
+        for data in default_users:
+            exists = (
+                db.query(User)
+                .filter(User.username == data["username"])
+                .first()
             )
 
+            if not exists:
+                db.add(
+                    User(
+                        name=data["name"],
+                        username=data["username"],
+                        password_hash=pwd_context.hash(data["password"]),
+                        role=data["role"],
+                    )
+                )
+                created = True
+
+        if created:
             db.commit()
 
     finally:
@@ -1033,15 +1070,20 @@ def relatorios(
     if redirect:
         return redirect
 
+    # Relatórios são exclusivos do ADM
     require_role(
         user,
         ["adm"],
     )
 
+    # -----------------------------------------------------
+    # DEFINIÇÃO DO PERÍODO
+    # -----------------------------------------------------
+
     inicio = None
     fim = None
 
-    hoje = datetime.now()
+    hoje = brasil_now()
 
     if periodo == "dia":
 
@@ -1106,6 +1148,7 @@ def relatorios(
 
     else:
 
+        # Padrão: mês atual
         periodo = "mes"
 
         if data_filtro:
@@ -1152,6 +1195,10 @@ def relatorios(
                 0,
             )
 
+    # -----------------------------------------------------
+    # BUSCAR SERVIÇOS CONCLUÍDOS NO PERÍODO
+    # -----------------------------------------------------
+
     concluded = (
         db.query(MaintenanceRequest)
         .filter(
@@ -1170,8 +1217,13 @@ def relatorios(
         .all()
     )
 
+    # -----------------------------------------------------
+    # SERVIÇOS POR COLABORADOR
+    # -----------------------------------------------------
+
     employee_stats = {}
 
+    # Todos os colaboradores começam com zero
     for employee in MAINTENANCE_EMPLOYEES:
 
         employee_stats[employee] = {
@@ -1179,6 +1231,7 @@ def relatorios(
             "total_hours": 0.0,
         }
 
+    # Registros antigos sem executor
     employee_stats["Não informado"] = {
         "count": 0,
         "total_hours": 0.0,
@@ -1214,10 +1267,15 @@ def relatorios(
                 "total_hours"
             ] += hours
 
+    # -----------------------------------------------------
+    # ORDEM DOS COLABORADORES
+    # -----------------------------------------------------
+
     employee_labels = list(
         MAINTENANCE_EMPLOYEES
     )
 
+    # Só aparece se existir serviço sem executor
     if (
         employee_stats["Não informado"]["count"]
         > 0
@@ -1255,9 +1313,17 @@ def relatorios(
 
             employee_avg_hours.append(0)
 
+    # -----------------------------------------------------
+    # TOTAL DE SERVIÇOS
+    # -----------------------------------------------------
+
     total_concluded = len(
         concluded
     )
+
+    # -----------------------------------------------------
+    # TEMPO MÉDIO POR PRIORIDADE
+    # -----------------------------------------------------
 
     priority_order = [
         "Baixa",
@@ -1331,7 +1397,15 @@ def relatorios(
 
             priority_avg_hours.append(0)
 
+    # -----------------------------------------------------
+    # CONTADORES GERAIS
+    # -----------------------------------------------------
+
     counts = get_status_counts(db)
+
+    # -----------------------------------------------------
+    # TELA
+    # -----------------------------------------------------
 
     return templates.TemplateResponse(
         request=request,
@@ -1413,7 +1487,7 @@ def request_detail(
             "user": user,
             "item": req,
             "maintenance_employees": MAINTENANCE_EMPLOYEES,
-            "now_datetime": datetime.now().strftime(
+            "now_datetime": brasil_now().strftime(
                 "%Y-%m-%dT%H:%M"
             ),
         },
@@ -1460,26 +1534,18 @@ def schedule_request(
             detail="Solicitação não encontrada",
         )
 
-    # =====================================================
-    # FUNCIONÁRIO É OBRIGATÓRIO
-    # =====================================================
+    if not scheduled_employee or not scheduled_employee.strip():
 
-    if (
-        not scheduled_employee
-        or not scheduled_employee.strip()
-    ):
         raise HTTPException(
             status_code=400,
-            detail=(
-                "É obrigatório selecionar o funcionário "
-                "responsável pelo atendimento"
-            ),
+            detail="É obrigatório selecionar o funcionário responsável pelo atendimento",
         )
 
     if (
         scheduled_employee
         not in MAINTENANCE_EMPLOYEES
     ):
+
         raise HTTPException(
             status_code=400,
             detail="Funcionário inválido",
@@ -1494,6 +1560,15 @@ def schedule_request(
         raise HTTPException(
             status_code=400,
             detail="Data e horário do agendamento inválidos",
+        )
+
+    # O agendamento precisa acontecer depois da abertura da O.S.
+    # Não é permitido agendar no mesmo horário ou antes da solicitação.
+    if req.created_at and planned_datetime <= req.created_at:
+
+        raise HTTPException(
+            status_code=400,
+            detail="O agendamento deve ser posterior à data e horário da solicitação.",
         )
 
     req.scheduled_employee = (
@@ -1574,7 +1649,7 @@ def take_request(
 
     if not req.started_at:
 
-        req.started_at = datetime.now()
+        req.started_at = brasil_now()
 
     db.commit()
 
@@ -1661,6 +1736,22 @@ def finish_request(
             detail="Data ou horário da execução inválidos",
         )
 
+    # A execução nunca pode começar antes da abertura da O.S.
+    if req.created_at and real_start < req.created_at:
+
+        raise HTTPException(
+            status_code=400,
+            detail="O início da execução não pode ser anterior à data e horário da solicitação.",
+        )
+
+    # O término também não pode ser anterior à abertura da O.S.
+    if req.created_at and real_finish < req.created_at:
+
+        raise HTTPException(
+            status_code=400,
+            detail="O término da execução não pode ser anterior à data e horário da solicitação.",
+        )
+
     if real_finish < real_start:
 
         raise HTTPException(
@@ -1706,6 +1797,68 @@ def finish_request(
     return RedirectResponse(
         f"/solicitacao/{request_id}",
         status_code=303,
+    )
+
+
+# =========================================================
+# IMPRIMIR AGENDAMENTO
+# =========================================================
+
+@app.get(
+    "/solicitacao/{request_id}/imprimir-agendamento",
+    response_class=HTMLResponse,
+)
+def imprimir_agendamento(
+    request: Request,
+    request_id: int,
+    db: Session = Depends(get_db),
+):
+    user = current_user(
+        request,
+        db,
+    )
+
+    if not user:
+
+        return RedirectResponse(
+            "/login",
+            status_code=303,
+        )
+
+    # A impressão do agendamento é restrita à manutenção e ao ADM.
+    if user.role not in ["adm", "manutencao"]:
+
+        return RedirectResponse(
+            f"/solicitacao/{request_id}",
+            status_code=303,
+        )
+
+    item = db.get(
+        MaintenanceRequest,
+        request_id,
+    )
+
+    if not item:
+
+        return RedirectResponse(
+            "/painel",
+            status_code=303,
+        )
+
+    if not item.scheduled_employee:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Esta solicitação ainda não possui funcionário agendado.",
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="imprimir_agendamento.html",
+        context={
+            "user": user,
+            "item": item,
+        },
     )
 
 
@@ -1828,64 +1981,6 @@ def imprimir_ordem(
     return templates.TemplateResponse(
         request=request,
         name="ordem_servico.html",
-        context={
-            "user": user,
-            "item": item,
-        },
-    )
-
-
-# =========================================================
-# IMPRIMIR AGENDAMENTO
-# =========================================================
-
-@app.get(
-    "/solicitacao/{request_id}/imprimir-agendamento",
-    response_class=HTMLResponse,
-)
-def imprimir_agendamento(
-    request: Request,
-    request_id: int,
-    db: Session = Depends(get_db),
-):
-    user = current_user(
-        request,
-        db,
-    )
-
-    if not user:
-
-        return RedirectResponse(
-            "/login",
-            status_code=303,
-        )
-
-    # Somente ADM e Manutenção podem imprimir
-    # o documento de agendamento
-    if user.role not in [
-        "adm",
-        "manutencao",
-    ]:
-        return RedirectResponse(
-            f"/solicitacao/{request_id}",
-            status_code=303,
-        )
-
-    item = db.get(
-        MaintenanceRequest,
-        request_id,
-    )
-
-    if not item:
-
-        return RedirectResponse(
-            "/painel",
-            status_code=303,
-        )
-
-    return templates.TemplateResponse(
-        request=request,
-        name="imprimir_agendamento.html",
         context={
             "user": user,
             "item": item,
