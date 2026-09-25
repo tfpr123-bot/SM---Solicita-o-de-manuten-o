@@ -86,6 +86,7 @@ Base = declarative_base()
 
 BRASIL_TZ = ZoneInfo("America/Sao_Paulo")
 
+
 def brasil_now():
     """Retorna a data/hora atual no fuso de São Paulo."""
     return datetime.now(BRASIL_TZ).replace(tzinfo=None)
@@ -807,9 +808,10 @@ def new_request_page(
     if redirect:
         return redirect
 
+    # Líder, Manutenção e ADM podem abrir solicitação.
     require_role(
         user,
-        ["lider", "adm"],
+        ["lider", "manutencao", "adm"],
     )
 
     return templates.TemplateResponse(
@@ -841,9 +843,10 @@ async def create_request(
     if redirect:
         return redirect
 
+    # Líder, Manutenção e ADM podem abrir solicitação.
     require_role(
         user,
-        ["lider", "adm"],
+        ["lider", "manutencao", "adm"],
     )
 
     if priority not in {
