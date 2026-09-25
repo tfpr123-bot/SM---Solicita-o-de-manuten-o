@@ -56,14 +56,28 @@
             text-align: center;
         }
 
+        /* FUNDO DO LOGO */
+
+        .brand-logo-box {
+            width: 100%;
+            max-width: 205px;
+            margin: 0 auto 16px;
+            padding: 12px 14px;
+            background: #ffffff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
+        }
+
         .brand-logo {
             display: block;
-            width: 175px;
-            max-width: 100%;
+            width: 100%;
+            max-width: 175px;
             height: auto;
             max-height: 75px;
             object-fit: contain;
-            margin: 0 auto 16px;
         }
 
         .brand h1 {
@@ -703,10 +717,21 @@
                 text-align: center;
             }
 
-            .brand-logo {
-                width: 50px;
-                max-height: 50px;
+            /* CAIXA DO LOGO NO MOBILE */
+
+            .brand-logo-box {
+                width: 54px;
+                height: 54px;
+                padding: 7px;
                 margin-bottom: 8px;
+                border-radius: 8px;
+            }
+
+            .brand-logo {
+                width: 100%;
+                max-width: 50px;
+                max-height: 50px;
+                margin-bottom: 0;
             }
 
             .brand h1 {
@@ -811,11 +836,15 @@
 
         <div class="brand">
 
-            <img
-                src="/static/logo.png"
-                alt="Grupo Alvorada"
-                class="brand-logo"
-            >
+            <div class="brand-logo-box">
+
+                <img
+                    src="/static/logo.png"
+                    alt="Grupo Alvorada"
+                    class="brand-logo"
+                >
+
+            </div>
 
             <h1>MANUTENÇÃO</h1>
 
