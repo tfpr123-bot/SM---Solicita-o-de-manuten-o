@@ -217,6 +217,29 @@
             font-size: 13px;
         }
 
+        /* NOVA SOLICITAÇÃO */
+
+        .new-request-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            height: 40px;
+            padding: 0 16px;
+            border-radius: 7px;
+            background: #2563eb;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            transition: .2s;
+        }
+
+        .new-request-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
         .content {
             padding: 28px 30px 40px;
         }
@@ -712,6 +735,14 @@
                 padding-right: 18px;
             }
 
+            .page-header {
+                align-items: flex-start;
+            }
+
+            .new-request-btn {
+                padding: 0 12px;
+            }
+
             .filters {
                 grid-template-columns: 1fr;
             }
@@ -733,10 +764,15 @@
 
             .page-header {
                 align-items: flex-start;
+                flex-direction: column;
             }
 
             .page-header h2 {
                 font-size: 21px;
+            }
+
+            .new-request-btn {
+                width: 100%;
             }
 
             .requests-header {
@@ -842,6 +878,18 @@
                     </p>
 
                 </div>
+
+                {% if user.role in ["manutencao", "adm"] %}
+
+                    <a
+                        href="/nova-solicitacao"
+                        class="new-request-btn"
+                    >
+                        <span>＋</span>
+                        Nova Solicitação
+                    </a>
+
+                {% endif %}
 
             </div>
 
