@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -569,6 +570,16 @@ def parse_datetime(value):
         )
     except ValueError:
         return None
+
+
+def redirect_with_error(
+    request_id: int,
+    message: str,
+):
+    return RedirectResponse(
+        f"/solicitacao/{request_id}?error={quote(message)}",
+        status_code=303,
+    )
 
 
 def get_status_counts(db: Session):
@@ -1444,6 +1455,7 @@ def relatorios(
 def request_detail(
     request: Request,
     request_id: int,
+    error: str = "",
     db: Session = Depends(get_db),
 ):
     user = current_user(
@@ -1490,6 +1502,7 @@ def request_detail(
             "now_datetime": brasil_now().strftime(
                 "%Y-%m-%dT%H:%M"
             ),
+            "error": error,
         },
     )
 
@@ -1536,9 +1549,9 @@ def schedule_request(
 
     if not scheduled_employee or not scheduled_employee.strip():
 
-        raise HTTPException(
-            status_code=400,
-            detail="É obrigatório selecionar o funcionário responsável pelo atendimento",
+        return redirect_with_error(
+            request_id,
+            "É obrigatório selecionar o funcionário responsável pelo atendimento.",
         )
 
     if (
@@ -1546,9 +1559,9 @@ def schedule_request(
         not in MAINTENANCE_EMPLOYEES
     ):
 
-        raise HTTPException(
-            status_code=400,
-            detail="Funcionário inválido",
+        return redirect_with_error(
+            request_id,
+            "Funcionário inválido.",
         )
 
     planned_datetime = parse_datetime(
@@ -1557,18 +1570,18 @@ def schedule_request(
 
     if not planned_datetime:
 
-        raise HTTPException(
-            status_code=400,
-            detail="Data e horário do agendamento inválidos",
+        return redirect_with_error(
+            request_id,
+            "Data e horário do agendamento inválidos.",
         )
 
     # O agendamento precisa acontecer depois da abertura da O.S.
     # Não é permitido agendar no mesmo horário ou antes da solicitação.
     if req.created_at and planned_datetime <= req.created_at:
 
-        raise HTTPException(
-            status_code=400,
-            detail="O agendamento deve ser posterior à data e horário da solicitação.",
+        return redirect_with_error(
+            request_id,
+            "O agendamento deve ser posterior à data e horário da solicitação.",
         )
 
     req.scheduled_employee = (
