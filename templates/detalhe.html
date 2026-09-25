@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -293,6 +294,12 @@
             color: #92400e;
         }
 
+        .alert-error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #b91c1c;
+        }
+
         .alert strong {
             display: block;
             margin-bottom: 5px;
@@ -399,6 +406,15 @@
             </a>
         {% endif %}
     </div>
+
+
+    <!-- ERRO -->
+    {% if error %}
+    <div class="alert alert-error">
+        <strong>⚠️ Não foi possível realizar o agendamento</strong>
+        {{ error }}
+    </div>
+    {% endif %}
 
 
     <!-- INFORMAÇÕES PRINCIPAIS -->
