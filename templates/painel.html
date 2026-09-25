@@ -51,14 +51,26 @@
         }
 
         .brand {
-            padding: 25px 22px;
+            padding: 22px 18px 20px;
             border-bottom: 1px solid rgba(255,255,255,.08);
+            text-align: center;
+        }
+
+        .brand-logo {
+            display: block;
+            width: 175px;
+            max-width: 100%;
+            height: auto;
+            max-height: 75px;
+            object-fit: contain;
+            margin: 0 auto 16px;
         }
 
         .brand h1 {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             margin-bottom: 5px;
+            letter-spacing: .4px;
         }
 
         .brand span {
@@ -687,12 +699,18 @@
             }
 
             .brand {
-                padding: 20px 10px;
+                padding: 15px 8px;
                 text-align: center;
             }
 
+            .brand-logo {
+                width: 50px;
+                max-height: 50px;
+                margin-bottom: 8px;
+            }
+
             .brand h1 {
-                font-size: 13px;
+                font-size: 10px;
             }
 
             .brand span,
@@ -792,8 +810,17 @@
     <aside class="sidebar">
 
         <div class="brand">
+
+            <img
+                src="/static/logo.png"
+                alt="Grupo Alvorada"
+                class="brand-logo"
+            >
+
             <h1>MANUTENÇÃO</h1>
+
             <span>Gestão de Serviços</span>
+
         </div>
 
         <div class="menu-title">
@@ -803,22 +830,49 @@
         <nav class="menu">
 
             <a href="/painel" class="active">
+
                 <span class="menu-icon">▦</span>
+
                 <span>Dashboard</span>
 
                 {% if counts.pendente > 0 %}
-                    <span class="badge">{{ counts.pendente }}</span>
+
+                    <span class="badge">
+                        {{ counts.pendente }}
+                    </span>
+
                 {% endif %}
+
             </a>
 
-            {% if user.role == "adm" %}
-                <a href="/relatorios">
-                    <span class="menu-icon">📊</span>
-                    <span>Relatórios</span>
+
+            {% if user.role in ["manutencao", "adm"] %}
+
+                <a href="/nova-solicitacao">
+
+                    <span class="menu-icon">＋</span>
+
+                    <span>Nova Solicitação</span>
+
                 </a>
+
+            {% endif %}
+
+
+            {% if user.role == "adm" %}
+
+                <a href="/relatorios">
+
+                    <span class="menu-icon">📊</span>
+
+                    <span>Relatórios</span>
+
+                </a>
+
             {% endif %}
 
         </nav>
+
 
         <div class="sidebar-user">
 
@@ -837,9 +891,13 @@
                     <div class="user-role">
 
                         {% if user.role == "adm" %}
+
                             Administrador
+
                         {% else %}
+
                             Manutenção
+
                         {% endif %}
 
                     </div>
@@ -847,6 +905,7 @@
                 </div>
 
             </div>
+
 
             <a href="/logout" class="logout">
                 ↪ Sair do sistema
@@ -867,11 +926,14 @@
                 Sistema / <span>Dashboard</span>
             </div>
 
+
             <div class="page-header">
 
                 <div>
 
-                    <h2>Dashboard</h2>
+                    <h2>
+                        Dashboard
+                    </h2>
 
                     <p>
                         Visão geral das solicitações de manutenção.
@@ -879,14 +941,18 @@
 
                 </div>
 
+
                 {% if user.role in ["manutencao", "adm"] %}
 
                     <a
                         href="/nova-solicitacao"
                         class="new-request-btn"
                     >
+
                         <span>＋</span>
+
                         Nova Solicitação
+
                     </a>
 
                 {% endif %}
@@ -1043,6 +1109,7 @@
 
                 </div>
 
+
                 <form method="get" action="/painel">
 
                     <div class="filters">
@@ -1130,6 +1197,7 @@
                                 Aplicar filtros
                             </button>
 
+
                             {% if status or priority %}
 
                                 <a
@@ -1168,6 +1236,7 @@
 
                     </div>
 
+
                     <div class="count-label">
 
                         {{ rows|length }}
@@ -1201,6 +1270,7 @@
                                 </tr>
 
                             </thead>
+
 
                             <tbody>
 
@@ -1406,6 +1476,7 @@
                         <p>
                             Não existem solicitações para os filtros selecionados.
                         </p>
+
 
                         {% if status or priority %}
 
