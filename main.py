@@ -1,5 +1,6 @@
 import os
 import secrets
+import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -11,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from passlib.context import CryptContext
+from pywebpush import webpush, WebPushException
 
 from sqlalchemy import (
     create_engine,
@@ -102,6 +104,26 @@ pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"],
     deprecated="auto",
 )
+
+
+# =========================================================
+# WEB PUSH / VAPID
+# =========================================================
+
+VAPID_PRIVATE_KEY = os.getenv(
+    "VAPID_PRIVATE_KEY",
+    "",
+).strip()
+
+VAPID_PUBLIC_KEY = os.getenv(
+    "VAPID_PUBLIC_KEY",
+    "",
+).strip()
+
+VAPID_CLAIMS_EMAIL = os.getenv(
+    "VAPID_CLAIMS_EMAIL",
+    "",
+).strip()
 
 
 # =========================================================
@@ -506,6 +528,51 @@ class History(Base):
     request = relationship(
         "MaintenanceRequest",
         back_populates="history",
+    )
+
+    user = relationship(
+        "User",
+    )
+
+
+# =========================================================
+# ASSINATURAS DE NOTIFICAÇÃO PUSH
+# =========================================================
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+    )
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    endpoint = Column(
+        Text,
+        nullable=False,
+        unique=True,
+    )
+
+    p256dh = Column(
+        Text,
+        nullable=False,
+    )
+
+    auth = Column(
+        Text,
+        nullable=False,
+    )
+
+    created_at = Column(
+        DateTime,
+        default=brasil_now,
     )
 
     user = relationship(
@@ -1057,6 +1124,262 @@ def sync_executed_employees(
 
 
 # =========================================================
+# WEB PUSH - ENVIO DE NOTIFICAÇÕES
+# =========================================================
+
+def send_push_notification(
+    db: Session,
+    title: str,
+    body: str,
+    url: str = "/",
+):
+    """
+    Envia uma notificação Web Push para todas as
+    assinaturas cadastradas.
+
+    Se uma assinatura estiver expirada ou inválida,
+    ela é removida automaticamente.
+
+    Falhas de push não devem impedir a operação
+    principal do sistema.
+    """
+
+    if not VAPID_PRIVATE_KEY:
+        print(
+            "WEB PUSH: VAPID_PRIVATE_KEY não configurada."
+        )
+        return
+
+    if not VAPID_PUBLIC_KEY:
+        print(
+            "WEB PUSH: VAPID_PUBLIC_KEY não configurada."
+        )
+        return
+
+    if not VAPID_CLAIMS_EMAIL:
+        print(
+            "WEB PUSH: VAPID_CLAIMS_EMAIL não configurada."
+        )
+        return
+
+    subscriptions = (
+        db.query(PushSubscription)
+        .all()
+    )
+
+    if not subscriptions:
+        return
+
+    payload = json.dumps(
+        {
+            "title": title,
+            "body": body,
+            "url": url,
+        },
+        ensure_ascii=False,
+    )
+
+    stale_ids = []
+
+    for subscription in subscriptions:
+
+        subscription_info = {
+            "endpoint": subscription.endpoint,
+            "keys": {
+                "p256dh": subscription.p256dh,
+                "auth": subscription.auth,
+            },
+        }
+
+        try:
+
+            webpush(
+                subscription_info=subscription_info,
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={
+                    "sub": VAPID_CLAIMS_EMAIL,
+                },
+            )
+
+        except WebPushException as exc:
+
+            status_code = None
+
+            if exc.response is not None:
+
+                status_code = getattr(
+                    exc.response,
+                    "status_code",
+                    None,
+                )
+
+            if status_code in {404, 410}:
+
+                stale_ids.append(
+                    subscription.id
+                )
+
+            else:
+
+                print(
+                    "WEB PUSH: erro ao enviar "
+                    f"para assinatura {subscription.id}: "
+                    f"{exc}"
+                )
+
+        except Exception as exc:
+
+            print(
+                "WEB PUSH: erro inesperado "
+                f"na assinatura {subscription.id}: "
+                f"{exc}"
+            )
+
+    if stale_ids:
+
+        (
+            db.query(PushSubscription)
+            .filter(
+                PushSubscription.id.in_(
+                    stale_ids
+                )
+            )
+            .delete(
+                synchronize_session=False
+            )
+        )
+
+        db.commit()
+
+
+# =========================================================
+# API - CHAVE PÚBLICA VAPID
+# =========================================================
+
+@app.get("/push/public-key")
+def get_push_public_key():
+
+    if not VAPID_PUBLIC_KEY:
+
+        raise HTTPException(
+            status_code=503,
+            detail="Notificações push ainda não estão configuradas.",
+        )
+
+    return {
+        "publicKey": VAPID_PUBLIC_KEY,
+    }
+
+
+# =========================================================
+# API - CADASTRAR ASSINATURA PUSH
+# =========================================================
+
+@app.post("/push/subscribe")
+async def push_subscribe(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    user, redirect = require_login(
+        request,
+        db,
+    )
+
+    if redirect:
+        raise HTTPException(
+            status_code=401,
+            detail="Usuário não autenticado.",
+        )
+
+    try:
+        payload = await request.json()
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Dados da assinatura inválidos.",
+        )
+
+    endpoint = payload.get(
+        "endpoint"
+    )
+
+    keys = payload.get(
+        "keys"
+    ) or {}
+
+    p256dh = keys.get(
+        "p256dh"
+    )
+
+    auth = keys.get(
+        "auth"
+    )
+
+    if not endpoint or not p256dh or not auth:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Assinatura push incompleta.",
+        )
+
+    if not isinstance(endpoint, str):
+        raise HTTPException(
+            status_code=400,
+            detail="Endpoint inválido.",
+        )
+
+    if not isinstance(p256dh, str):
+        raise HTTPException(
+            status_code=400,
+            detail="Chave p256dh inválida.",
+        )
+
+    if not isinstance(auth, str):
+        raise HTTPException(
+            status_code=400,
+            detail="Chave auth inválida.",
+        )
+
+    subscription = (
+        db.query(PushSubscription)
+        .filter(
+            PushSubscription.endpoint
+            == endpoint
+        )
+        .first()
+    )
+
+    if subscription:
+
+        subscription.user_id = user.id
+
+        subscription.p256dh = p256dh
+
+        subscription.auth = auth
+
+    else:
+
+        subscription = PushSubscription(
+            user_id=user.id,
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth,
+        )
+
+        db.add(subscription)
+
+    db.commit()
+
+    return {
+        "ok": True,
+        "message": "Notificações ativadas.",
+    }
+
+
+# =========================================================
 # USUÁRIOS INICIAIS
 # =========================================================
 
@@ -1378,6 +1701,30 @@ async def create_request(
         user,
         "Solicitação aberta",
     )
+
+    # =====================================================
+    # NOTIFICAÇÃO PUSH - NOVA O.S.
+    # =====================================================
+
+    try:
+
+        send_push_notification(
+            db=db,
+            title="🔧 Nova Solicitação de Manutenção",
+            body=(
+                f"O.S. #{req.id} • "
+                f"{req.sector} • "
+                f"Prioridade {req.priority}"
+            ),
+            url=f"/solicitacao/{req.id}",
+        )
+
+    except Exception as exc:
+
+        print(
+            f"WEB PUSH: falha ao notificar "
+            f"a O.S. #{req.id}: {exc}"
+        )
 
     return RedirectResponse(
         f"/solicitacao/{req.id}",
