@@ -1,6 +1,7 @@
 {
     "name": "Sistema de Manutenção",
     "short_name": "Manutenção",
+    "id": "/",
     "description": "Sistema de Solicitação e Controle de Manutenção",
     "start_url": "/",
     "display": "standalone",
