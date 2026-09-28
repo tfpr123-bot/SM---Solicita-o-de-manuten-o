@@ -6,3 +6,4 @@ itsdangerous
 sqlalchemy
 psycopg[binary]
 passlib[bcrypt]
+pywebpush
