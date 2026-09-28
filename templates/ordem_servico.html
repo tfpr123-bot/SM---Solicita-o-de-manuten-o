@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -133,10 +134,16 @@
         <div class="os-grid">
 
             <div>
-                <label>Responsável programado</label>
+                <label>Responsáveis programados</label>
 
                 <strong>
-                    {{ item.scheduled_employee or "Não informado" }}
+                    {% if scheduled_employees %}
+                        {{ scheduled_employees|join(", ") }}
+                    {% elif item.scheduled_employee %}
+                        {{ item.scheduled_employee }}
+                    {% else %}
+                        Não informado
+                    {% endif %}
                 </strong>
             </div>
 
@@ -178,10 +185,16 @@
         <div class="os-grid">
 
             <div>
-                <label>Executor</label>
+                <label>Executores</label>
 
                 <strong>
-                    {{ item.executor_name or "________________________________" }}
+                    {% if executed_employees %}
+                        {{ executed_employees|join(", ") }}
+                    {% elif item.executor_name %}
+                        {{ item.executor_name }}
+                    {% else %}
+                        ________________________________
+                    {% endif %}
                 </strong>
             </div>
 
@@ -291,7 +304,7 @@
 
         <div class="signature">
             <div class="signature-line"></div>
-            <span>Responsável pela execução</span>
+            <span>Responsáveis pela execução</span>
         </div>
 
         <div class="signature">
@@ -316,3 +329,4 @@
 
 </body>
 </html>
+```
