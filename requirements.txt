@@ -1,8 +1,10 @@
+```text
 fastapi
-uvicorn[standard]
+uvicorn[standard]>=0.35.0
 jinja2
 python-multipart
 itsdangerous
 sqlalchemy
 psycopg[binary]
 passlib[bcrypt]
+```
