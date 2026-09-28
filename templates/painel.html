@@ -56,8 +56,6 @@
             text-align: center;
         }
 
-        /* FUNDO DO LOGO */
-
         .brand-logo-box {
             width: 100%;
             max-width: 205px;
@@ -288,6 +286,10 @@
             height: 42px;
         }
 
+        .welcome-info {
+            flex: 1;
+        }
+
         .welcome-info strong {
             display: block;
             font-size: 14px;
@@ -297,6 +299,38 @@
             color: #22a06b;
             font-size: 11px;
             margin-top: 3px;
+        }
+
+        /* BOTÃO DE NOTIFICAÇÕES */
+
+        .notification-btn {
+            margin-left: auto;
+            border: 1px solid #d5dbe0;
+            background: #fff;
+            color: #4b5560;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+            transition: .2s;
+            white-space: nowrap;
+        }
+
+        .notification-btn:hover {
+            background: #f3f5f7;
+            border-color: #bfc7cf;
+        }
+
+        .notification-btn.active {
+            color: #23704b;
+            border-color: #b7dfc8;
+            background: #e9f7ef;
+        }
+
+        .notification-btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
         }
 
         /* CARDS */
@@ -717,8 +751,6 @@
                 text-align: center;
             }
 
-            /* CAIXA DO LOGO NO MOBILE */
-
             .brand-logo-box {
                 width: 54px;
                 height: 54px;
@@ -796,6 +828,11 @@
 
             .filter-actions .btn {
                 flex: 1;
+            }
+
+            .notification-btn {
+                margin-left: 0;
+                margin-top: 8px;
             }
         }
 
@@ -1012,6 +1049,14 @@
                     </div>
 
                 </div>
+
+                <button
+                    type="button"
+                    id="notificationBtn"
+                    class="notification-btn"
+                >
+                    🔔 Ativar notificações
+                </button>
 
             </div>
 
@@ -1529,6 +1574,71 @@
     </main>
 
 </div>
+
+<script>
+    const notificationBtn = document.getElementById("notificationBtn");
+
+    async function ativarNotificacoes() {
+
+        if (!("Notification" in window)) {
+            alert("Este navegador não oferece suporte a notificações.");
+            return;
+        }
+
+        if (!("serviceWorker" in navigator)) {
+            alert("Este navegador não oferece suporte ao Service Worker.");
+            return;
+        }
+
+        notificationBtn.disabled = true;
+        notificationBtn.textContent = "Ativando...";
+
+        try {
+
+            const permission = await Notification.requestPermission();
+
+            if (permission === "granted") {
+
+                notificationBtn.textContent = "✓ Notificações ativadas";
+                notificationBtn.classList.add("active");
+
+                alert("Notificações ativadas neste dispositivo.");
+
+            } else if (permission === "denied") {
+
+                notificationBtn.textContent = "🔕 Notificações bloqueadas";
+
+                alert(
+                    "As notificações foram bloqueadas no navegador. " +
+                    "Será necessário permitir notificações nas configurações do navegador."
+                );
+
+            } else {
+
+                notificationBtn.textContent = "🔔 Ativar notificações";
+                notificationBtn.disabled = false;
+
+            }
+
+        } catch (error) {
+
+            console.error("Erro ao ativar notificações:", error);
+
+            notificationBtn.textContent = "🔔 Ativar notificações";
+            notificationBtn.disabled = false;
+
+            alert("Não foi possível ativar as notificações.");
+
+        }
+    }
+
+    notificationBtn.addEventListener("click", ativarNotificacoes);
+
+    if ("Notification" in window && Notification.permission === "granted") {
+        notificationBtn.textContent = "✓ Notificações ativadas";
+        notificationBtn.classList.add("active");
+    }
+</script>
 
 </body>
 </html>
