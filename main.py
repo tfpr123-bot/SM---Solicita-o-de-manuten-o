@@ -252,7 +252,6 @@ class MaintenanceRequest(Base):
         nullable=False,
     )
 
-    # Usuário que assumiu/agendou a solicitação
     assigned_to_id = Column(
         Integer,
         ForeignKey("users.id"),
@@ -282,8 +281,6 @@ class MaintenanceRequest(Base):
     # AGENDAMENTO
     # =====================================================
 
-    # Mantido para compatibilidade com dados antigos.
-    # A nova estrutura usa MaintenanceRequestEmployee.
     scheduled_employee = Column(
         String(120),
         nullable=True,
@@ -299,8 +296,6 @@ class MaintenanceRequest(Base):
         nullable=True,
     )
 
-    # Mantido para compatibilidade com dados antigos.
-    # A nova estrutura usa MaintenanceRequestEmployee.
     executor_name = Column(
         String(120),
         nullable=True,
@@ -375,11 +370,6 @@ class MaintenanceRequestEmployee(Base):
 
     scheduled = colaborador programado para o atendimento.
     executed  = colaborador que realmente participou da execução.
-
-    Assim uma pessoa pode estar:
-        - apenas agendada;
-        - apenas na execução;
-        - nas duas situações.
     """
 
     __tablename__ = "maintenance_request_employees"
@@ -565,7 +555,20 @@ def migrate_employee_assignments():
 
         maintenance_request_employees
 
-    Nenhum dado antigo é apagado.
+    A migração é segura e idempotente.
+
+    Não apaga dados antigos.
+
+    Se o mesmo funcionário estiver:
+        - agendado
+        - e também tiver executado
+
+    será criada apenas UMA linha com:
+
+        scheduled=True
+        executed=True
+
+    Também preserva registros que já existam na nova tabela.
     """
 
     inspector = inspect(engine)
@@ -593,6 +596,12 @@ def migrate_employee_assignments():
 
         for req in requests:
 
+            # =================================================
+            # JUNTA OS CAMPOS ANTIGOS PRIMEIRO
+            # =================================================
+
+            legacy_employees = {}
+
             # ---------------------------------------------
             # COLABORADOR AGENDADO
             # ---------------------------------------------
@@ -606,36 +615,18 @@ def migrate_employee_assignments():
                     req.scheduled_employee.strip()
                 )
 
-                assignment = (
-                    db.query(
-                        MaintenanceRequestEmployee
-                    )
-                    .filter(
-                        MaintenanceRequestEmployee.request_id
-                        == req.id,
+                if employee_name not in legacy_employees:
 
-                        MaintenanceRequestEmployee.employee_name
-                        == employee_name,
-                    )
-                    .first()
-                )
+                    legacy_employees[
+                        employee_name
+                    ] = {
+                        "scheduled": False,
+                        "executed": False,
+                    }
 
-                if not assignment:
-
-                    assignment = (
-                        MaintenanceRequestEmployee(
-                            request_id=req.id,
-                            employee_name=employee_name,
-                            scheduled=True,
-                            executed=False,
-                        )
-                    )
-
-                    db.add(assignment)
-
-                else:
-
-                    assignment.scheduled = True
+                legacy_employees[
+                    employee_name
+                ]["scheduled"] = True
 
             # ---------------------------------------------
             # COLABORADOR QUE EXECUTOU
@@ -650,6 +641,25 @@ def migrate_employee_assignments():
                     req.executor_name.strip()
                 )
 
+                if employee_name not in legacy_employees:
+
+                    legacy_employees[
+                        employee_name
+                    ] = {
+                        "scheduled": False,
+                        "executed": False,
+                    }
+
+                legacy_employees[
+                    employee_name
+                ]["executed"] = True
+
+            # =================================================
+            # SALVA / ATUALIZA SEM DUPLICAR
+            # =================================================
+
+            for employee_name, flags in legacy_employees.items():
+
                 assignment = (
                     db.query(
                         MaintenanceRequestEmployee
@@ -664,24 +674,44 @@ def migrate_employee_assignments():
                     .first()
                 )
 
-                if not assignment:
+                if assignment:
 
-                    assignment = (
-                        MaintenanceRequestEmployee(
-                            request_id=req.id,
-                            employee_name=employee_name,
-                            scheduled=False,
-                            executed=True,
-                        )
+                    # Já existe:
+                    # preserva tudo que já estava salvo
+                    # e acrescenta os dados antigos.
+
+                    assignment.scheduled = (
+                        bool(assignment.scheduled)
+                        or flags["scheduled"]
                     )
 
-                    db.add(assignment)
+                    assignment.executed = (
+                        bool(assignment.executed)
+                        or flags["executed"]
+                    )
 
                 else:
 
-                    assignment.executed = True
+                    # Não existe:
+                    # cria apenas UMA linha para esta
+                    # combinação O.S. + funcionário.
+
+                    db.add(
+                        MaintenanceRequestEmployee(
+                            request_id=req.id,
+                            employee_name=employee_name,
+                            scheduled=flags["scheduled"],
+                            executed=flags["executed"],
+                        )
+                    )
 
         db.commit()
+
+    except Exception:
+
+        db.rollback()
+
+        raise
 
     finally:
 
@@ -1016,8 +1046,6 @@ def seed_admin():
 
     try:
 
-        # Cria somente os usuários que ainda não existem.
-        # Assim, adicionar novos usuários não apaga nem recria os atuais.
         default_users = [
             {
                 "name": "Administrador",
@@ -1218,7 +1246,6 @@ def new_request_page(
     if redirect:
         return redirect
 
-    # Líder, Manutenção e ADM podem abrir solicitação.
     require_role(
         user,
         ["lider", "manutencao", "adm"],
@@ -1253,7 +1280,6 @@ async def create_request(
     if redirect:
         return redirect
 
-    # Líder, Manutenção e ADM podem abrir solicitação.
     require_role(
         user,
         ["lider", "manutencao", "adm"],
@@ -1501,7 +1527,6 @@ def relatorios(
     if redirect:
         return redirect
 
-    # Relatórios são exclusivos do ADM
     require_role(
         user,
         ["adm"],
@@ -1585,7 +1610,6 @@ def relatorios(
 
     else:
 
-        # Padrão: mês atual
         periodo = "mes"
 
         if data_filtro:
@@ -1663,7 +1687,6 @@ def relatorios(
 
     employee_stats = {}
 
-    # Todos os colaboradores começam com zero
     for employee in MAINTENANCE_EMPLOYEES:
 
         employee_stats[employee] = {
@@ -1671,7 +1694,6 @@ def relatorios(
             "total_hours": 0.0,
         }
 
-    # Registros antigos sem executor
     employee_stats["Não informado"] = {
         "count": 0,
         "total_hours": 0.0,
@@ -1679,22 +1701,16 @@ def relatorios(
 
     for req in concluded:
 
-        # A nova estrutura registra todos os participantes.
         executed_employees = (
             get_executed_employees(req)
         )
 
-        # Compatibilidade com O.S. antigas.
         if not executed_employees:
 
             executed_employees = [
                 "Não informado"
             ]
 
-        # Uma O.S. pode ter vários participantes.
-        # Cada participante recebe 1 participação.
-        # A O.S. continua sendo contada apenas uma vez
-        # em total_concluded e nos indicadores de prioridade.
         for name in executed_employees:
 
             if name not in employee_stats:
@@ -1728,7 +1744,6 @@ def relatorios(
         MAINTENANCE_EMPLOYEES
     )
 
-    # Só aparece se existir serviço sem executor
     if (
         employee_stats["Não informado"]["count"]
         > 0
@@ -1770,9 +1785,6 @@ def relatorios(
     # TOTAL DE SERVIÇOS
     # -----------------------------------------------------
 
-    # IMPORTANTE:
-    # Continua sendo a quantidade real de O.S.
-    # Não é multiplicado pelo número de colaboradores.
     total_concluded = len(
         concluded
     )
@@ -1952,11 +1964,8 @@ def request_detail(
             "user": user,
             "item": req,
             "maintenance_employees": MAINTENANCE_EMPLOYEES,
-
-            # Novos dados para o template.
             "scheduled_employees": scheduled_employees,
             "executed_employees": executed_employees,
-
             "now_datetime": brasil_now().strftime(
                 "%Y-%m-%dT%H:%M"
             ),
@@ -2024,8 +2033,6 @@ def schedule_request(
             "É obrigatório selecionar pelo menos um funcionário para o atendimento.",
         )
 
-    # Se a lista recebida tinha nomes inválidos,
-    # não permitimos simplesmente ignorá-los.
     raw_employees = (
         scheduled_employees
         if isinstance(
@@ -2068,8 +2075,6 @@ def schedule_request(
             "Data e horário do agendamento inválidos.",
         )
 
-    # O agendamento precisa acontecer depois da abertura da O.S.
-    # Não é permitido agendar no mesmo horário ou antes da solicitação.
     if (
         req.created_at
         and planned_datetime <= req.created_at
@@ -2104,9 +2109,6 @@ def schedule_request(
     # COMPATIBILIDADE COM O CAMPO ANTIGO
     # -----------------------------------------------------
 
-    # Não apagamos um valor antigo existente.
-    # Para novas O.S., deixamos o primeiro colaborador
-    # também no campo antigo para compatibilidade.
     if not req.scheduled_employee:
 
         req.scheduled_employee = (
@@ -2309,7 +2311,6 @@ def finish_request(
             detail="Data ou horário da execução inválidos",
         )
 
-    # A execução nunca pode começar antes da abertura da O.S.
     if (
         req.created_at
         and real_start < req.created_at
@@ -2323,7 +2324,6 @@ def finish_request(
             ),
         )
 
-    # O término também não pode ser anterior à abertura da O.S.
     if (
         req.created_at
         and real_finish < req.created_at
@@ -2364,9 +2364,6 @@ def finish_request(
     # COMPATIBILIDADE COM O CAMPO ANTIGO
     # -----------------------------------------------------
 
-    # Não apagamos um executor antigo.
-    # Para registros novos, gravamos o primeiro executor
-    # também no campo antigo.
     if not req.executor_name:
 
         req.executor_name = (
@@ -2435,7 +2432,6 @@ def imprimir_agendamento(
             status_code=303,
         )
 
-    # A impressão do agendamento é restrita à manutenção e ao ADM.
     if user.role not in [
         "adm",
         "manutencao",
