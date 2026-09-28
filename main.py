@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -149,6 +149,33 @@ app.mount(
 templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
+
+
+# =========================================================
+# PWA - MANIFEST E SERVICE WORKER
+# =========================================================
+
+@app.get(
+    "/manifest.json",
+)
+def pwa_manifest():
+    return FileResponse(
+        BASE_DIR / "static" / "manifest.json",
+        media_type="application/manifest+json",
+    )
+
+
+@app.get(
+    "/service-worker.js",
+)
+def service_worker():
+    return FileResponse(
+        BASE_DIR / "static" / "service-worker.js",
+        media_type="application/javascript",
+        headers={
+            "Service-Worker-Allowed": "/",
+        },
+    )
 
 
 # =========================================================
@@ -676,10 +703,6 @@ def migrate_employee_assignments():
 
                 if assignment:
 
-                    # Já existe:
-                    # preserva tudo que já estava salvo
-                    # e acrescenta os dados antigos.
-
                     assignment.scheduled = (
                         bool(assignment.scheduled)
                         or flags["scheduled"]
@@ -691,10 +714,6 @@ def migrate_employee_assignments():
                     )
 
                 else:
-
-                    # Não existe:
-                    # cria apenas UMA linha para esta
-                    # combinação O.S. + funcionário.
 
                     db.add(
                         MaintenanceRequestEmployee(
