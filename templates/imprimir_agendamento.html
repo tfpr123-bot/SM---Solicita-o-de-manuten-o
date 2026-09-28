@@ -483,12 +483,18 @@
             <div class="schedule-field">
 
                 <span class="field-label">
-                    Funcionário responsável
+                    Funcionários responsáveis
                 </span>
 
                 <div class="field-value">
 
-                    {{ item.scheduled_employee or "-" }}
+                    {% if scheduled_employees %}
+                        {{ scheduled_employees|join(", ") }}
+                    {% elif item.scheduled_employee %}
+                        {{ item.scheduled_employee }}
+                    {% else %}
+                        -
+                    {% endif %}
 
                 </div>
 
@@ -603,11 +609,19 @@
                 <div class="signature-line">
 
                     <div class="signature-name">
-                        {{ item.scheduled_employee or "Funcionário responsável" }}
+
+                        {% if scheduled_employees %}
+                            {{ scheduled_employees|join(", ") }}
+                        {% elif item.scheduled_employee %}
+                            {{ item.scheduled_employee }}
+                        {% else %}
+                            Funcionários responsáveis
+                        {% endif %}
+
                     </div>
 
                     <div class="signature-role">
-                        Executor do serviço
+                        Executor(es) do serviço
                     </div>
 
                 </div>
