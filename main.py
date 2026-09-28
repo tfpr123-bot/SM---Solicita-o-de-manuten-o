@@ -20,6 +20,8 @@ from sqlalchemy import (
     Text,
     DateTime,
     ForeignKey,
+    Boolean,
+    UniqueConstraint,
     inspect,
     text,
 )
@@ -280,13 +282,15 @@ class MaintenanceRequest(Base):
     # AGENDAMENTO
     # =====================================================
 
-    planned_at = Column(
-        DateTime,
+    # Mantido para compatibilidade com dados antigos.
+    # A nova estrutura usa MaintenanceRequestEmployee.
+    scheduled_employee = Column(
+        String(120),
         nullable=True,
     )
 
-    scheduled_employee = Column(
-        String(120),
+    planned_at = Column(
+        DateTime,
         nullable=True,
     )
 
@@ -295,7 +299,8 @@ class MaintenanceRequest(Base):
         nullable=True,
     )
 
-    # Quem realmente executou o serviço
+    # Mantido para compatibilidade com dados antigos.
+    # A nova estrutura usa MaintenanceRequestEmployee.
     executor_name = Column(
         String(120),
         nullable=True,
@@ -351,6 +356,73 @@ class MaintenanceRequest(Base):
         "History",
         back_populates="request",
         cascade="all, delete-orphan",
+    )
+
+    # =====================================================
+    # COLABORADORES DA O.S.
+    # =====================================================
+
+    employees = relationship(
+        "MaintenanceRequestEmployee",
+        back_populates="request",
+        cascade="all, delete-orphan",
+    )
+
+
+class MaintenanceRequestEmployee(Base):
+    """
+    Colaboradores vinculados a uma O.S.
+
+    scheduled = colaborador programado para o atendimento.
+    executed  = colaborador que realmente participou da execução.
+
+    Assim uma pessoa pode estar:
+        - apenas agendada;
+        - apenas na execução;
+        - nas duas situações.
+    """
+
+    __tablename__ = "maintenance_request_employees"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "request_id",
+            "employee_name",
+            name="uq_maintenance_request_employee",
+        ),
+    )
+
+    id = Column(
+        Integer,
+        primary_key=True,
+    )
+
+    request_id = Column(
+        Integer,
+        ForeignKey("maintenance_requests.id"),
+        nullable=False,
+    )
+
+    employee_name = Column(
+        String(120),
+        nullable=False,
+    )
+
+    scheduled = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    executed = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    request = relationship(
+        "MaintenanceRequest",
+        back_populates="employees",
     )
 
 
@@ -482,6 +554,143 @@ def migrate_database():
 migrate_database()
 
 
+def migrate_employee_assignments():
+    """
+    Migra os colaboradores existentes nos campos antigos:
+
+        scheduled_employee
+        executor_name
+
+    para a nova tabela:
+
+        maintenance_request_employees
+
+    Nenhum dado antigo é apagado.
+    """
+
+    inspector = inspect(engine)
+
+    if (
+        "maintenance_requests"
+        not in inspector.get_table_names()
+    ):
+        return
+
+    if (
+        "maintenance_request_employees"
+        not in inspector.get_table_names()
+    ):
+        return
+
+    db = SessionLocal()
+
+    try:
+
+        requests = (
+            db.query(MaintenanceRequest)
+            .all()
+        )
+
+        for req in requests:
+
+            # ---------------------------------------------
+            # COLABORADOR AGENDADO
+            # ---------------------------------------------
+
+            if (
+                req.scheduled_employee
+                and req.scheduled_employee.strip()
+            ):
+
+                employee_name = (
+                    req.scheduled_employee.strip()
+                )
+
+                assignment = (
+                    db.query(
+                        MaintenanceRequestEmployee
+                    )
+                    .filter(
+                        MaintenanceRequestEmployee.request_id
+                        == req.id,
+
+                        MaintenanceRequestEmployee.employee_name
+                        == employee_name,
+                    )
+                    .first()
+                )
+
+                if not assignment:
+
+                    assignment = (
+                        MaintenanceRequestEmployee(
+                            request_id=req.id,
+                            employee_name=employee_name,
+                            scheduled=True,
+                            executed=False,
+                        )
+                    )
+
+                    db.add(assignment)
+
+                else:
+
+                    assignment.scheduled = True
+
+            # ---------------------------------------------
+            # COLABORADOR QUE EXECUTOU
+            # ---------------------------------------------
+
+            if (
+                req.executor_name
+                and req.executor_name.strip()
+            ):
+
+                employee_name = (
+                    req.executor_name.strip()
+                )
+
+                assignment = (
+                    db.query(
+                        MaintenanceRequestEmployee
+                    )
+                    .filter(
+                        MaintenanceRequestEmployee.request_id
+                        == req.id,
+
+                        MaintenanceRequestEmployee.employee_name
+                        == employee_name,
+                    )
+                    .first()
+                )
+
+                if not assignment:
+
+                    assignment = (
+                        MaintenanceRequestEmployee(
+                            request_id=req.id,
+                            employee_name=employee_name,
+                            scheduled=False,
+                            executed=True,
+                        )
+                    )
+
+                    db.add(assignment)
+
+                else:
+
+                    assignment.executed = True
+
+        db.commit()
+
+    finally:
+
+        db.close()
+
+
+migrate_employee_assignments()
+
+
 # =========================================================
 # FUNÇÕES AUXILIARES
 # =========================================================
@@ -597,6 +806,7 @@ def get_status_counts(db: Session):
         ("atendimento", "EM ATENDIMENTO"),
         ("concluida", "CONCLUÍDA"),
     ):
+
         counts[key] = (
             db.query(MaintenanceRequest)
             .filter(
@@ -609,6 +819,194 @@ def get_status_counts(db: Session):
     return counts
 
 
+def normalize_employee_list(
+    employees,
+):
+    """
+    Limpa, valida e remove duplicidades da lista
+    de colaboradores recebida pelo formulário.
+    """
+
+    if not employees:
+        return []
+
+    if isinstance(
+        employees,
+        str,
+    ):
+        employees = [employees]
+
+    normalized = []
+
+    for employee in employees:
+
+        if not employee:
+            continue
+
+        employee = employee.strip()
+
+        if not employee:
+            continue
+
+        if employee not in MAINTENANCE_EMPLOYEES:
+            continue
+
+        if employee not in normalized:
+            normalized.append(employee)
+
+    return normalized
+
+
+def get_scheduled_employees(req):
+    """
+    Retorna os colaboradores programados.
+
+    Primeiro usa a nova estrutura.
+    Se não existir, utiliza o campo antigo.
+    """
+
+    employees = [
+        assignment.employee_name
+        for assignment in req.employees
+        if assignment.scheduled
+    ]
+
+    if employees:
+        return employees
+
+    if (
+        req.scheduled_employee
+        and req.scheduled_employee.strip()
+    ):
+        return [
+            req.scheduled_employee.strip()
+        ]
+
+    return []
+
+
+def get_executed_employees(req):
+    """
+    Retorna os colaboradores que realmente executaram
+    o serviço.
+
+    Primeiro usa a nova estrutura.
+    Se não existir, utiliza o campo antigo.
+    """
+
+    employees = [
+        assignment.employee_name
+        for assignment in req.employees
+        if assignment.executed
+    ]
+
+    if employees:
+        return employees
+
+    if (
+        req.executor_name
+        and req.executor_name.strip()
+    ):
+        return [
+            req.executor_name.strip()
+        ]
+
+    return []
+
+
+def sync_scheduled_employees(
+    db: Session,
+    req: MaintenanceRequest,
+    employees,
+):
+    """
+    Atualiza somente quem está programado.
+
+    A informação de quem realmente executou permanece
+    independente.
+    """
+
+    employees = normalize_employee_list(
+        employees
+    )
+
+    existing = {
+        assignment.employee_name: assignment
+        for assignment in req.employees
+    }
+
+    for assignment in req.employees:
+        assignment.scheduled = (
+            assignment.employee_name
+            in employees
+        )
+
+    for employee in employees:
+
+        if employee not in existing:
+
+            db.add(
+                MaintenanceRequestEmployee(
+                    request_id=req.id,
+                    employee_name=employee,
+                    scheduled=True,
+                    executed=False,
+                )
+            )
+
+        else:
+
+            existing[employee].scheduled = True
+
+    return employees
+
+
+def sync_executed_employees(
+    db: Session,
+    req: MaintenanceRequest,
+    employees,
+):
+    """
+    Atualiza exatamente quem participou da execução.
+
+    A programação permanece preservada.
+    """
+
+    employees = normalize_employee_list(
+        employees
+    )
+
+    existing = {
+        assignment.employee_name: assignment
+        for assignment in req.employees
+    }
+
+    for assignment in req.employees:
+        assignment.executed = (
+            assignment.employee_name
+            in employees
+        )
+
+    for employee in employees:
+
+        if employee not in existing:
+
+            db.add(
+                MaintenanceRequestEmployee(
+                    request_id=req.id,
+                    employee_name=employee,
+                    scheduled=False,
+                    executed=True,
+                )
+            )
+
+        else:
+
+            existing[employee].executed = True
+
+    return employees
+
+
 # =========================================================
 # USUÁRIOS INICIAIS
 # =========================================================
@@ -617,6 +1015,7 @@ def seed_admin():
     db = SessionLocal()
 
     try:
+
         # Cria somente os usuários que ainda não existem.
         # Assim, adicionar novos usuários não apaga nem recria os atuais.
         default_users = [
@@ -655,21 +1054,29 @@ def seed_admin():
         created = False
 
         for data in default_users:
+
             exists = (
                 db.query(User)
-                .filter(User.username == data["username"])
+                .filter(
+                    User.username
+                    == data["username"]
+                )
                 .first()
             )
 
             if not exists:
+
                 db.add(
                     User(
                         name=data["name"],
                         username=data["username"],
-                        password_hash=pwd_context.hash(data["password"]),
+                        password_hash=pwd_context.hash(
+                            data["password"]
+                        ),
                         role=data["role"],
                     )
                 )
+
                 created = True
 
         if created:
@@ -700,12 +1107,14 @@ def index(
     )
 
     if not user:
+
         return RedirectResponse(
             "/login",
             status_code=303,
         )
 
     if user.role == "lider":
+
         return RedirectResponse(
             "/minhas-solicitacoes",
             status_code=303,
@@ -760,6 +1169,7 @@ def login(
         password,
         user.password_hash,
     ):
+
         return templates.TemplateResponse(
             request=request,
             name="login.html",
@@ -855,6 +1265,7 @@ async def create_request(
         "Alta",
         "Crítica",
     }:
+
         priority = "Média"
 
     req = MaintenanceRequest(
@@ -968,19 +1379,23 @@ def my_requests(
 
     counts = {
         "pendente": sum(
-            1 for r in rows
+            1
+            for r in rows
             if r.status == "PENDENTE"
         ),
         "agendada": sum(
-            1 for r in rows
+            1
+            for r in rows
             if r.status == "AGENDADA"
         ),
         "atendimento": sum(
-            1 for r in rows
+            1
+            for r in rows
             if r.status == "EM ATENDIMENTO"
         ),
         "concluida": sum(
-            1 for r in rows
+            1
+            for r in rows
             if r.status == "CONCLUÍDA"
         ),
     }
@@ -1028,12 +1443,14 @@ def dashboard(
     )
 
     if status:
+
         query = query.filter(
             MaintenanceRequest.status
             == status
         )
 
     if priority:
+
         query = query.filter(
             MaintenanceRequest.priority
             == priority
@@ -1104,15 +1521,18 @@ def relatorios(
         if data_filtro:
 
             try:
+
                 data_base = datetime.strptime(
                     data_filtro,
                     "%Y-%m-%d",
                 )
 
             except ValueError:
+
                 data_base = hoje
 
         else:
+
             data_base = hoje
 
         inicio = data_base.replace(
@@ -1134,12 +1554,15 @@ def relatorios(
         if data_filtro:
 
             try:
+
                 ano = int(data_filtro)
 
             except ValueError:
+
                 ano = hoje.year
 
         else:
+
             ano = hoje.year
 
         inicio = datetime(
@@ -1168,15 +1591,18 @@ def relatorios(
         if data_filtro:
 
             try:
+
                 data_base = datetime.strptime(
                     data_filtro,
                     "%Y-%m",
                 )
 
             except ValueError:
+
                 data_base = hoje
 
         else:
+
             data_base = hoje
 
         inicio = data_base.replace(
@@ -1232,7 +1658,7 @@ def relatorios(
     )
 
     # -----------------------------------------------------
-    # SERVIÇOS POR COLABORADOR
+    # SERVIÇOS / PARTICIPAÇÕES POR COLABORADOR
     # -----------------------------------------------------
 
     employee_stats = {}
@@ -1253,33 +1679,46 @@ def relatorios(
 
     for req in concluded:
 
-        name = (
-            req.executor_name
-            or "Não informado"
+        # A nova estrutura registra todos os participantes.
+        executed_employees = (
+            get_executed_employees(req)
         )
 
-        if name not in employee_stats:
+        # Compatibilidade com O.S. antigas.
+        if not executed_employees:
 
-            employee_stats[name] = {
-                "count": 0,
-                "total_hours": 0.0,
-            }
+            executed_employees = [
+                "Não informado"
+            ]
 
-        employee_stats[name]["count"] += 1
+        # Uma O.S. pode ter vários participantes.
+        # Cada participante recebe 1 participação.
+        # A O.S. continua sendo contada apenas uma vez
+        # em total_concluded e nos indicadores de prioridade.
+        for name in executed_employees:
 
-        if (
-            req.started_at
-            and req.finished_at
-        ):
+            if name not in employee_stats:
 
-            hours = (
-                req.finished_at
-                - req.started_at
-            ).total_seconds() / 3600
+                employee_stats[name] = {
+                    "count": 0,
+                    "total_hours": 0.0,
+                }
 
-            employee_stats[name][
-                "total_hours"
-            ] += hours
+            employee_stats[name]["count"] += 1
+
+            if (
+                req.started_at
+                and req.finished_at
+            ):
+
+                hours = (
+                    req.finished_at
+                    - req.started_at
+                ).total_seconds() / 3600
+
+                employee_stats[name][
+                    "total_hours"
+                ] += hours
 
     # -----------------------------------------------------
     # ORDEM DOS COLABORADORES
@@ -1331,6 +1770,9 @@ def relatorios(
     # TOTAL DE SERVIÇOS
     # -----------------------------------------------------
 
+    # IMPORTANTE:
+    # Continua sendo a quantidade real de O.S.
+    # Não é multiplicado pelo número de colaboradores.
     total_concluded = len(
         concluded
     )
@@ -1495,6 +1937,14 @@ def request_detail(
             detail="Acesso não autorizado",
         )
 
+    scheduled_employees = (
+        get_scheduled_employees(req)
+    )
+
+    executed_employees = (
+        get_executed_employees(req)
+    )
+
     return templates.TemplateResponse(
         request=request,
         name="detalhe.html",
@@ -1502,6 +1952,11 @@ def request_detail(
             "user": user,
             "item": req,
             "maintenance_employees": MAINTENANCE_EMPLOYEES,
+
+            # Novos dados para o template.
+            "scheduled_employees": scheduled_employees,
+            "executed_employees": executed_employees,
+
             "now_datetime": brasil_now().strftime(
                 "%Y-%m-%dT%H:%M"
             ),
@@ -1520,7 +1975,9 @@ def request_detail(
 def schedule_request(
     request: Request,
     request_id: int,
-    scheduled_employee: str = Form(...),
+    scheduled_employees: list[str] = Form(
+        default=[]
+    ),
     planned_at: str = Form(...),
     scheduling_note: str = Form(""),
     db: Session = Depends(get_db),
@@ -1550,21 +2007,54 @@ def schedule_request(
             detail="Solicitação não encontrada",
         )
 
-    if not scheduled_employee or not scheduled_employee.strip():
+    # -----------------------------------------------------
+    # NORMALIZA E VALIDA COLABORADORES
+    # -----------------------------------------------------
+
+    selected_employees = (
+        normalize_employee_list(
+            scheduled_employees
+        )
+    )
+
+    if not selected_employees:
 
         return redirect_with_error(
             request_id,
-            "É obrigatório selecionar o funcionário responsável pelo atendimento.",
+            "É obrigatório selecionar pelo menos um funcionário para o atendimento.",
         )
 
-    if (
-        scheduled_employee
-        not in MAINTENANCE_EMPLOYEES
+    # Se a lista recebida tinha nomes inválidos,
+    # não permitimos simplesmente ignorá-los.
+    raw_employees = (
+        scheduled_employees
+        if isinstance(
+            scheduled_employees,
+            list,
+        )
+        else [scheduled_employees]
+    )
+
+    raw_valid = []
+
+    for employee in raw_employees:
+
+        if not employee:
+            continue
+
+        employee = employee.strip()
+
+        if employee:
+            raw_valid.append(employee)
+
+    if any(
+        employee not in MAINTENANCE_EMPLOYEES
+        for employee in raw_valid
     ):
 
         return redirect_with_error(
             request_id,
-            "Funcionário inválido.",
+            "Um ou mais funcionários selecionados são inválidos.",
         )
 
     planned_datetime = parse_datetime(
@@ -1580,20 +2070,27 @@ def schedule_request(
 
     # O agendamento precisa acontecer depois da abertura da O.S.
     # Não é permitido agendar no mesmo horário ou antes da solicitação.
-    if req.created_at and planned_datetime <= req.created_at:
+    if (
+        req.created_at
+        and planned_datetime <= req.created_at
+    ):
 
         return redirect_with_error(
             request_id,
             "O agendamento deve ser posterior à data e horário da solicitação.",
         )
 
-    req.scheduled_employee = (
-        scheduled_employee
+    # -----------------------------------------------------
+    # SALVAR NOVA ESTRUTURA
+    # -----------------------------------------------------
+
+    sync_scheduled_employees(
+        db,
+        req,
+        selected_employees,
     )
 
-    req.planned_at = (
-        planned_datetime
-    )
+    req.planned_at = planned_datetime
 
     req.scheduling_note = (
         scheduling_note.strip()
@@ -1603,7 +2100,24 @@ def schedule_request(
 
     req.status = "AGENDADA"
 
+    # -----------------------------------------------------
+    # COMPATIBILIDADE COM O CAMPO ANTIGO
+    # -----------------------------------------------------
+
+    # Não apagamos um valor antigo existente.
+    # Para novas O.S., deixamos o primeiro colaborador
+    # também no campo antigo para compatibilidade.
+    if not req.scheduled_employee:
+
+        req.scheduled_employee = (
+            selected_employees[0]
+        )
+
     db.commit()
+
+    employees_text = ", ".join(
+        selected_employees
+    )
 
     add_history(
         db,
@@ -1611,7 +2125,7 @@ def schedule_request(
         user,
         (
             f"Atendimento agendado para "
-            f"{scheduled_employee} em "
+            f"{employees_text} em "
             f"{planned_datetime.strftime('%d/%m/%Y %H:%M')}"
         ),
     )
@@ -1692,7 +2206,9 @@ def take_request(
 def finish_request(
     request: Request,
     request_id: int,
-    executor_name: str = Form(...),
+    executor_names: list[str] = Form(
+        default=[]
+    ),
     started_at: str = Form(...),
     finished_at: str = Form(...),
     diagnosis: str = Form(""),
@@ -1727,14 +2243,55 @@ def finish_request(
             detail="Solicitação não encontrada",
         )
 
-    if (
-        executor_name
-        not in MAINTENANCE_EMPLOYEES
+    # -----------------------------------------------------
+    # NORMALIZA E VALIDA EXECUTORES
+    # -----------------------------------------------------
+
+    selected_executors = (
+        normalize_employee_list(
+            executor_names
+        )
+    )
+
+    if not selected_executors:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "É obrigatório selecionar pelo menos "
+                "um funcionário que participou da execução."
+            ),
+        )
+
+    raw_executors = (
+        executor_names
+        if isinstance(
+            executor_names,
+            list,
+        )
+        else [executor_names]
+    )
+
+    raw_valid = []
+
+    for employee in raw_executors:
+
+        if not employee:
+            continue
+
+        employee = employee.strip()
+
+        if employee:
+            raw_valid.append(employee)
+
+    if any(
+        employee not in MAINTENANCE_EMPLOYEES
+        for employee in raw_valid
     ):
 
         raise HTTPException(
             status_code=400,
-            detail="Funcionário executor inválido",
+            detail="Um ou mais funcionários executores são inválidos",
         )
 
     real_start = parse_datetime(
@@ -1753,19 +2310,31 @@ def finish_request(
         )
 
     # A execução nunca pode começar antes da abertura da O.S.
-    if req.created_at and real_start < req.created_at:
+    if (
+        req.created_at
+        and real_start < req.created_at
+    ):
 
         raise HTTPException(
             status_code=400,
-            detail="O início da execução não pode ser anterior à data e horário da solicitação.",
+            detail=(
+                "O início da execução não pode ser "
+                "anterior à data e horário da solicitação."
+            ),
         )
 
     # O término também não pode ser anterior à abertura da O.S.
-    if req.created_at and real_finish < req.created_at:
+    if (
+        req.created_at
+        and real_finish < req.created_at
+    ):
 
         raise HTTPException(
             status_code=400,
-            detail="O término da execução não pode ser anterior à data e horário da solicitação.",
+            detail=(
+                "O término da execução não pode ser "
+                "anterior à data e horário da solicitação."
+            ),
         )
 
     if real_finish < real_start:
@@ -1775,13 +2344,34 @@ def finish_request(
             detail="O término não pode ser anterior ao início",
         )
 
+    # -----------------------------------------------------
+    # SALVAR EXECUTORES
+    # -----------------------------------------------------
+
+    sync_executed_employees(
+        db,
+        req,
+        selected_executors,
+    )
+
     req.status = "CONCLUÍDA"
 
     req.started_at = real_start
 
     req.finished_at = real_finish
 
-    req.executor_name = executor_name
+    # -----------------------------------------------------
+    # COMPATIBILIDADE COM O CAMPO ANTIGO
+    # -----------------------------------------------------
+
+    # Não apagamos um executor antigo.
+    # Para registros novos, gravamos o primeiro executor
+    # também no campo antigo.
+    if not req.executor_name:
+
+        req.executor_name = (
+            selected_executors[0]
+        )
 
     req.diagnosis = diagnosis.strip()
 
@@ -1799,6 +2389,10 @@ def finish_request(
 
     db.commit()
 
+    employees_text = ", ".join(
+        selected_executors
+    )
+
     add_history(
         db,
         req,
@@ -1806,7 +2400,7 @@ def finish_request(
         (
             f"Solicitação concluída. "
             f"Execução realizada por "
-            f"{executor_name}"
+            f"{employees_text}"
         ),
     )
 
@@ -1842,7 +2436,10 @@ def imprimir_agendamento(
         )
 
     # A impressão do agendamento é restrita à manutenção e ao ADM.
-    if user.role not in ["adm", "manutencao"]:
+    if user.role not in [
+        "adm",
+        "manutencao",
+    ]:
 
         return RedirectResponse(
             f"/solicitacao/{request_id}",
@@ -1861,11 +2458,18 @@ def imprimir_agendamento(
             status_code=303,
         )
 
-    if not item.scheduled_employee:
+    scheduled_employees = (
+        get_scheduled_employees(item)
+    )
+
+    if not scheduled_employees:
 
         raise HTTPException(
             status_code=400,
-            detail="Esta solicitação ainda não possui funcionário agendado.",
+            detail=(
+                "Esta solicitação ainda não possui "
+                "funcionário agendado."
+            ),
         )
 
     return templates.TemplateResponse(
@@ -1874,6 +2478,7 @@ def imprimir_agendamento(
         context={
             "user": user,
             "item": item,
+            "scheduled_employees": scheduled_employees,
         },
     )
 
@@ -1994,11 +2599,21 @@ def imprimir_ordem(
             status_code=303,
         )
 
+    scheduled_employees = (
+        get_scheduled_employees(item)
+    )
+
+    executed_employees = (
+        get_executed_employees(item)
+    )
+
     return templates.TemplateResponse(
         request=request,
         name="ordem_servico.html",
         context={
             "user": user,
             "item": item,
+            "scheduled_employees": scheduled_employees,
+            "executed_employees": executed_employees,
         },
     )
