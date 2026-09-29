@@ -2834,4 +2834,3 @@ def imprimir_ordem(
             "executed_employees": executed_employees,
         },
     )
-```
