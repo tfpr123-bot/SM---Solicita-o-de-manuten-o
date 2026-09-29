@@ -39,10 +39,20 @@
             <label>Foto ou vídeo (opcional)</label>
             <input type="file" name="files" multiple accept="image/*,video/*">
 
-            <button type="submit">Enviar Solicitação</button>
+            <button type="submit" id="btnEnviar">Enviar Solicitação</button>
         </form>
     </div>
 </div>
+
+<script>
+    const form = document.querySelector("form");
+    const btn = document.getElementById("btnEnviar");
+
+    form.addEventListener("submit", function () {
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+    });
+</script>
 
 </body>
 </html>
