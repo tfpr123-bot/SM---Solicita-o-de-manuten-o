@@ -1237,6 +1237,42 @@
 
     {% endif %}
 
+
+    <!-- EXCLUIR O.S. - SOMENTE ADM -->
+    {% if user.role == "adm" %}
+
+    <div class="card">
+
+        <h2 class="danger-text">🗑️ Excluir Ordem de Serviço</h2>
+
+        <p style="margin-top:0;color:#6b7280;">
+            Esta ação excluirá permanentemente esta O.S. e seus registros relacionados.
+        </p>
+
+        <div class="form-actions">
+
+            <form
+                method="post"
+                action="/solicitacao/{{ item.id }}/excluir"
+                onsubmit="return confirm('Tem certeza que deseja excluir a O.S. #{{ item.id }}? Esta ação não poderá ser desfeita.');"
+            >
+
+                <button
+                    type="submit"
+                    class="btn"
+                    style="background:#dc2626;color:white;"
+                >
+                    🗑️ Excluir O.S.
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
 </div>
 
 </body>
