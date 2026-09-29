@@ -34,13 +34,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-
-# =========================================================
-# CONFIGURAÇÕES
-# =========================================================
-
 BASE_DIR = Path(__file__).resolve().parent
-
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -83,11 +77,6 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-
-# =========================================================
-# DATA/HORA DO BRASIL
-# =========================================================
-
 BRASIL_TZ = ZoneInfo("America/Sao_Paulo")
 
 
@@ -96,19 +85,10 @@ def brasil_now():
     return datetime.now(BRASIL_TZ).replace(tzinfo=None)
 
 
-# =========================================================
-# SEGURANÇA
-# =========================================================
-
 pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"],
     deprecated="auto",
 )
-
-
-# =========================================================
-# WEB PUSH / VAPID
-# =========================================================
 
 VAPID_PRIVATE_KEY = os.getenv(
     "VAPID_PRIVATE_KEY",
@@ -124,11 +104,6 @@ VAPID_CLAIMS_EMAIL = os.getenv(
     "VAPID_CLAIMS_EMAIL",
     "",
 ).strip()
-
-
-# =========================================================
-# FASTAPI
-# =========================================================
 
 app = FastAPI(
     title="Sistema de Manutenção",
@@ -146,11 +121,6 @@ app.add_middleware(
         "false",
     ).lower() == "true",
 )
-
-
-# =========================================================
-# ARQUIVOS ESTÁTICOS
-# =========================================================
 
 app.mount(
     "/static",
@@ -172,10 +142,6 @@ templates = Jinja2Templates(
     directory=BASE_DIR / "templates",
 )
 
-
-# =========================================================
-# PWA - MANIFEST E SERVICE WORKER
-# =========================================================
 
 @app.get(
     "/manifest.json",
@@ -200,10 +166,6 @@ def service_worker():
     )
 
 
-# =========================================================
-# FUNCIONÁRIOS DA MANUTENÇÃO
-# =========================================================
-
 MAINTENANCE_EMPLOYEES = [
     "João Maria",
     "João Antunes",
@@ -213,10 +175,6 @@ MAINTENANCE_EMPLOYEES = [
     "Claudinei",
 ]
 
-
-# =========================================================
-# BANCO DE DADOS
-# =========================================================
 
 class User(Base):
     __tablename__ = "users"
@@ -312,10 +270,6 @@ class MaintenanceRequest(Base):
         default=brasil_now,
     )
 
-    # =====================================================
-    # EXECUÇÃO REAL
-    # =====================================================
-
     started_at = Column(
         DateTime,
         nullable=True,
@@ -325,10 +279,6 @@ class MaintenanceRequest(Base):
         DateTime,
         nullable=True,
     )
-
-    # =====================================================
-    # AGENDAMENTO
-    # =====================================================
 
     scheduled_employee = Column(
         String(120),
@@ -349,10 +299,6 @@ class MaintenanceRequest(Base):
         String(120),
         nullable=True,
     )
-
-    # =====================================================
-    # RELATÓRIO
-    # =====================================================
 
     diagnosis = Column(
         Text,
@@ -402,10 +348,6 @@ class MaintenanceRequest(Base):
         cascade="all, delete-orphan",
     )
 
-    # =====================================================
-    # COLABORADORES DA O.S.
-    # =====================================================
-
     employees = relationship(
         "MaintenanceRequestEmployee",
         back_populates="request",
@@ -413,7 +355,7 @@ class MaintenanceRequest(Base):
     )
 
 
-class MaintenanceRequestEmployee(Base):
+class MaintenanceRequestEmployee:
     """
     Colaboradores vinculados a uma O.S.
 
@@ -535,10 +477,6 @@ class History(Base):
     )
 
 
-# =========================================================
-# ASSINATURAS DE NOTIFICAÇÃO PUSH
-# =========================================================
-
 class PushSubscription(Base):
     __tablename__ = "push_subscriptions"
 
@@ -579,10 +517,6 @@ class PushSubscription(Base):
         "User",
     )
 
-
-# =========================================================
-# CRIAÇÃO / ATUALIZAÇÃO DAS TABELAS
-# =========================================================
 
 Base.metadata.create_all(
     bind=engine,
@@ -690,15 +624,7 @@ def migrate_employee_assignments():
 
         for req in requests:
 
-            # =================================================
-            # JUNTA OS CAMPOS ANTIGOS PRIMEIRO
-            # =================================================
-
             legacy_employees = {}
-
-            # ---------------------------------------------
-            # COLABORADOR AGENDADO
-            # ---------------------------------------------
 
             if (
                 req.scheduled_employee
@@ -722,10 +648,6 @@ def migrate_employee_assignments():
                     employee_name
                 ]["scheduled"] = True
 
-            # ---------------------------------------------
-            # COLABORADOR QUE EXECUTOU
-            # ---------------------------------------------
-
             if (
                 req.executor_name
                 and req.executor_name.strip()
@@ -747,10 +669,6 @@ def migrate_employee_assignments():
                 legacy_employees[
                     employee_name
                 ]["executed"] = True
-
-            # =================================================
-            # SALVA / ATUALIZA SEM DUPLICAR
-            # =================================================
 
             for employee_name, flags in legacy_employees.items():
 
@@ -806,10 +724,6 @@ def migrate_employee_assignments():
 
 migrate_employee_assignments()
 
-
-# =========================================================
-# FUNÇÕES AUXILIARES
-# =========================================================
 
 def get_db():
     db = SessionLocal()
@@ -1123,10 +1037,6 @@ def sync_executed_employees(
     return employees
 
 
-# =========================================================
-# WEB PUSH - ENVIO DE NOTIFICAÇÕES
-# =========================================================
-
 def send_push_notification(
     db: Session,
     title: str,
@@ -1253,10 +1163,6 @@ def send_push_notification(
         db.commit()
 
 
-# =========================================================
-# API - CHAVE PÚBLICA VAPID
-# =========================================================
-
 @app.get("/push/public-key")
 def get_push_public_key():
 
@@ -1271,10 +1177,6 @@ def get_push_public_key():
         "publicKey": VAPID_PUBLIC_KEY,
     }
 
-
-# =========================================================
-# API - CADASTRAR ASSINATURA PUSH
-# =========================================================
 
 @app.post("/push/subscribe")
 async def push_subscribe(
@@ -1379,10 +1281,6 @@ async def push_subscribe(
     }
 
 
-# =========================================================
-# USUÁRIOS INICIAIS
-# =========================================================
-
 def seed_admin():
     db = SessionLocal()
 
@@ -1459,10 +1357,6 @@ def seed_admin():
 seed_admin()
 
 
-# =========================================================
-# PÁGINA INICIAL
-# =========================================================
-
 @app.get(
     "/",
     response_class=HTMLResponse,
@@ -1495,10 +1389,6 @@ def index(
         status_code=303,
     )
 
-
-# =========================================================
-# LOGIN
-# =========================================================
 
 @app.get(
     "/login",
@@ -1567,10 +1457,6 @@ def logout(
         status_code=303,
     )
 
-
-# =========================================================
-# NOVA SOLICITAÇÃO
-# =========================================================
 
 @app.get(
     "/nova-solicitacao",
@@ -1702,10 +1588,6 @@ async def create_request(
         "Solicitação aberta",
     )
 
-    # =====================================================
-    # NOTIFICAÇÃO PUSH - NOVA O.S.
-    # =====================================================
-
     try:
 
         send_push_notification(
@@ -1731,10 +1613,6 @@ async def create_request(
         status_code=303,
     )
 
-
-# =========================================================
-# MINHAS SOLICITAÇÕES
-# =========================================================
 
 @app.get(
     "/minhas-solicitacoes",
@@ -1803,10 +1681,6 @@ def my_requests(
     )
 
 
-# =========================================================
-# PAINEL
-# =========================================================
-
 @app.get(
     "/painel",
     response_class=HTMLResponse,
@@ -1871,10 +1745,6 @@ def dashboard(
     )
 
 
-# =========================================================
-# RELATÓRIOS
-# =========================================================
-
 @app.get(
     "/relatorios",
     response_class=HTMLResponse,
@@ -1897,10 +1767,6 @@ def relatorios(
         user,
         ["adm"],
     )
-
-    # -----------------------------------------------------
-    # DEFINIÇÃO DO PERÍODO
-    # -----------------------------------------------------
 
     inicio = None
     fim = None
@@ -2025,10 +1891,6 @@ def relatorios(
                 0,
             )
 
-    # -----------------------------------------------------
-    # BUSCAR SERVIÇOS CONCLUÍDOS NO PERÍODO
-    # -----------------------------------------------------
-
     concluded = (
         db.query(MaintenanceRequest)
         .filter(
@@ -2046,10 +1908,6 @@ def relatorios(
         )
         .all()
     )
-
-    # -----------------------------------------------------
-    # SERVIÇOS / PARTICIPAÇÕES POR COLABORADOR
-    # -----------------------------------------------------
 
     employee_stats = {}
 
@@ -2102,10 +1960,6 @@ def relatorios(
                     "total_hours"
                 ] += hours
 
-    # -----------------------------------------------------
-    # ORDEM DOS COLABORADORES
-    # -----------------------------------------------------
-
     employee_labels = list(
         MAINTENANCE_EMPLOYEES
     )
@@ -2147,17 +2001,9 @@ def relatorios(
 
             employee_avg_hours.append(0)
 
-    # -----------------------------------------------------
-    # TOTAL DE SERVIÇOS
-    # -----------------------------------------------------
-
     total_concluded = len(
         concluded
     )
-
-    # -----------------------------------------------------
-    # TEMPO MÉDIO POR PRIORIDADE
-    # -----------------------------------------------------
 
     priority_order = [
         "Baixa",
@@ -2231,15 +2077,7 @@ def relatorios(
 
             priority_avg_hours.append(0)
 
-    # -----------------------------------------------------
-    # CONTADORES GERAIS
-    # -----------------------------------------------------
-
     counts = get_status_counts(db)
-
-    # -----------------------------------------------------
-    # TELA
-    # -----------------------------------------------------
 
     return templates.TemplateResponse(
         request=request,
@@ -2266,10 +2104,6 @@ def relatorios(
         },
     )
 
-
-# =========================================================
-# DETALHE DA SOLICITAÇÃO
-# =========================================================
 
 @app.get(
     "/solicitacao/{request_id}",
@@ -2340,10 +2174,6 @@ def request_detail(
     )
 
 
-# =========================================================
-# AGENDAR ATENDIMENTO
-# =========================================================
-
 @app.post(
     "/solicitacao/{request_id}/agendar"
 )
@@ -2381,10 +2211,6 @@ def schedule_request(
             status_code=404,
             detail="Solicitação não encontrada",
         )
-
-    # -----------------------------------------------------
-    # NORMALIZA E VALIDA COLABORADORES
-    # -----------------------------------------------------
 
     selected_employees = (
         normalize_employee_list(
@@ -2451,10 +2277,6 @@ def schedule_request(
             "O agendamento deve ser posterior à data e horário da solicitação.",
         )
 
-    # -----------------------------------------------------
-    # SALVAR NOVA ESTRUTURA
-    # -----------------------------------------------------
-
     sync_scheduled_employees(
         db,
         req,
@@ -2470,10 +2292,6 @@ def schedule_request(
     req.assigned_to_id = user.id
 
     req.status = "AGENDADA"
-
-    # -----------------------------------------------------
-    # COMPATIBILIDADE COM O CAMPO ANTIGO
-    # -----------------------------------------------------
 
     if not req.scheduled_employee:
 
@@ -2503,10 +2321,6 @@ def schedule_request(
         status_code=303,
     )
 
-
-# =========================================================
-# LEGADO - ASSUMIR SOLICITAÇÃO
-# =========================================================
 
 @app.post(
     "/solicitacao/{request_id}/assumir"
@@ -2564,10 +2378,6 @@ def take_request(
     )
 
 
-# =========================================================
-# CONCLUIR SOLICITAÇÃO
-# =========================================================
-
 @app.post(
     "/solicitacao/{request_id}/concluir"
 )
@@ -2610,10 +2420,6 @@ def finish_request(
             status_code=404,
             detail="Solicitação não encontrada",
         )
-
-    # -----------------------------------------------------
-    # NORMALIZA E VALIDA EXECUTORES
-    # -----------------------------------------------------
 
     selected_executors = (
         normalize_employee_list(
@@ -2710,10 +2516,6 @@ def finish_request(
             detail="O término não pode ser anterior ao início",
         )
 
-    # -----------------------------------------------------
-    # SALVAR EXECUTORES
-    # -----------------------------------------------------
-
     sync_executed_employees(
         db,
         req,
@@ -2725,10 +2527,6 @@ def finish_request(
     req.started_at = real_start
 
     req.finished_at = real_finish
-
-    # -----------------------------------------------------
-    # COMPATIBILIDADE COM O CAMPO ANTIGO
-    # -----------------------------------------------------
 
     if not req.executor_name:
 
@@ -2773,9 +2571,74 @@ def finish_request(
     )
 
 
-# =========================================================
-# IMPRIMIR AGENDAMENTO
-# =========================================================
+# ============================================================
+# EXCLUIR O.S. - SOMENTE ADM
+# ============================================================
+
+@app.post(
+    "/solicitacao/{request_id}/excluir"
+)
+def delete_request(
+    request: Request,
+    request_id: int,
+    db: Session = Depends(get_db),
+):
+    user, redirect = require_login(
+        request,
+        db,
+    )
+
+    if redirect:
+        return redirect
+
+    require_role(
+        user,
+        ["adm"],
+    )
+
+    req = db.get(
+        MaintenanceRequest,
+        request_id,
+    )
+
+    if not req:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Solicitação não encontrada",
+        )
+
+    for attachment in req.attachments:
+
+        if not attachment.filename:
+            continue
+
+        file_path = (
+            UPLOAD_DIR
+            / attachment.filename
+        )
+
+        try:
+
+            if file_path.exists():
+                file_path.unlink()
+
+        except Exception as exc:
+
+            print(
+                "EXCLUSÃO O.S.: não foi possível "
+                f"remover o arquivo {file_path}: {exc}"
+            )
+
+    db.delete(req)
+
+    db.commit()
+
+    return RedirectResponse(
+        "/painel",
+        status_code=303,
+    )
+
 
 @app.get(
     "/solicitacao/{request_id}/imprimir-agendamento",
@@ -2845,10 +2708,6 @@ def imprimir_agendamento(
     )
 
 
-# =========================================================
-# ALTERAR PRIORIDADE
-# =========================================================
-
 @app.post(
     "/solicitacao/{request_id}/prioridade"
 )
@@ -2916,10 +2775,6 @@ def change_priority(
         status_code=303,
     )
 
-
-# =========================================================
-# IMPRIMIR ORDEM DE SERVIÇO
-# =========================================================
 
 @app.get(
     "/solicitacao/{request_id}/imprimir",
