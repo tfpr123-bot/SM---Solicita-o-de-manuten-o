@@ -1,3 +1,4 @@
+```python
 import os
 import secrets
 import json
@@ -355,7 +356,7 @@ class MaintenanceRequest(Base):
     )
 
 
-class MaintenanceRequestEmployee:
+class MaintenanceRequestEmployee(Base):
     """
     Colaboradores vinculados a uma O.S.
 
@@ -2834,3 +2835,4 @@ def imprimir_ordem(
             "executed_employees": executed_employees,
         },
     )
+```
